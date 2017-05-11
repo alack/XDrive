@@ -1,4 +1,7 @@
-from popup import *
+import sys
+from PyQt5 import QtWidgets, QtGui, QtCore, uic
+from PyQt5.QtCore import *
+from googleDrive import *
 
 
 # TitleBar class (custom)
@@ -40,7 +43,7 @@ class TitleBar(QtWidgets.QFrame):
 
         # XDrive icon
         XD = QtWidgets.QToolButton(self)
-        XD.setIcon(QtGui.QIcon('images/1.png'))
+        XD.setIcon(QtGui.QIcon('images/xd_blue.png'))
 
         # tooltip button setting
         self.minimize = QtWidgets.QToolButton(self)
@@ -111,9 +114,9 @@ class TitleBar(QtWidgets.QFrame):
             mainUI.move(event.globalPos() - mainUI.offset)
 
 
-class MenuBar(QtWidgets.QDialog):
+class MenuBar(QtWidgets.QFrame):
     def __init__(self, parent=None):
-        QtWidgets.QWidget.__init__(self, parent)
+        QtWidgets.QFrame.__init__(self, parent)
         self.setWindowFlags(Qt.FramelessWindowHint)
         # set css for TitleBar
         css = """
@@ -121,87 +124,126 @@ class MenuBar(QtWidgets.QDialog):
             Background: #4374D9;
             border-radius: 0px;
         }
+        QMenu{
+            color:black;
+            Background:#FFFFFF
+        }
+        QPushButton::menu-indicator{
+            image:none;
+        }
+        QProgressBar {
+            background-color:white;
+            border: 2px solid grey;
+            border-radius: 5px;
+            text-align: center;
+        }
+        QProgressBar::chunk {
+            background-color: #05B8CC; 
+            width: 20px;
+        }
         """
+
         # set css and background
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Highlight)
         self.setStyleSheet(css)
 
-        # set cloud add button
-        self.addCloudBtn = QtWidgets.QToolButton(self)
-        self.addCloudBtn.setIcon(QtGui.QIcon('images/add_cloud.png'))
-        self.addCloudBtn.setMouseTracking(True)
-
-        # set cloud remove button
-        self.removeCloudBtn = QtWidgets.QToolButton(self)
-        self.removeCloudBtn.setIcon(QtGui.QIcon('images/remove_cloud.png'))
-        self.removeCloudBtn.setMouseTracking(True)
+        # add/remove cloud, setting, arrange button
+        self.progressBar = QtWidgets.QProgressBar()
+        self.progressBar.setValue(0)  # default
 
         # set setting button
-        self.settingBtn = QtWidgets.QToolButton(self)
+        self.settingBtn = QtWidgets.QToolButton()
         self.settingBtn.setIcon(QtGui.QIcon('images/setting.png'))
         self.settingBtn.setMouseTracking(True)
 
         # set array button
-        self.arrangeBtn = QtWidgets.QToolButton(self)
+        self.arrangeBtn = QtWidgets.QToolButton()
         self.arrangeBtn.setIcon(QtGui.QIcon('images/arrange.png'))
 
-        # set layout
-        menu_left_layout = QtWidgets.QHBoxLayout()
-        used_label = QtWidgets.QLabel()
-        not_used_label = QtWidgets.QLabel()
-        menu_left_layout.addWidget(used_label)
-        menu_left_layout.addWidget(not_used_label)
+        # add cloud menu
+        self.add_menu_setting()
 
-        # add/remove cloud, setting, arrange button
-        menu_right_layout = QtWidgets.QHBoxLayout()
-        menu_right_layout.addWidget(self.arrangeBtn)
-        menu_right_layout.addWidget(self.addCloudBtn)
-        menu_right_layout.addWidget(self.removeCloudBtn)
-        menu_right_layout.addWidget(self.settingBtn)
-        menu_right_layout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        # remove cloud menu button
+        self.removeCloudBtn = QtWidgets.QPushButton()
+        self.removeCloudBtn.setIcon(QtGui.QIcon('images/remove_cloud.png'))
 
-        menu_layout = QtWidgets.QHBoxLayout(self)
-        menu_layout.addLayout(menu_left_layout)
-        menu_layout.addLayout(menu_right_layout)
+        self.layout = QtWidgets.QHBoxLayout(self)
+        self.layout.addWidget(self.progressBar)
+        self.layout.addWidget(QtWidgets.QLabel("     "))
+        self.layout.addWidget(self.arrangeBtn)
+        self.layout.addWidget(self.addCloudBtn)
+        self.layout.addWidget(self.removeCloudBtn)
+        self.layout.addWidget(self.settingBtn)
 
+        # add action
+        self.arrangeBtn.clicked.connect(self.directory_arrange_action)
+
+        # set alignment
+        self.layout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         # set title bar size
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.maxNormal = False
 
-        # add action
-        self.addCloudBtn.clicked.connect(self.add_cloud_action)
-        self.removeCloudBtn.clicked.connect(self.remove_cloud_action)
-        self.settingBtn.clicked.connect(self.setting_action)
-        self.arrangeBtn.clicked.connect(self.directory_arrange_action)
+    def add_menu_setting(self):
+        self.addMenu = QtWidgets.QMenu()
+        # set add action
+        self.googleAddAction = QtWidgets.QAction(QtGui.QIcon('images/google_small.png'), 'GoogleDrive', self)
+        self.boxAddAction = QtWidgets.QAction(QtGui.QIcon('images/box.png'), "Box", self)
+        self.dropboxAddAction = QtWidgets.QAction(QtGui.QIcon('images/dropbox.png'), "Dropbox", self)
 
-        # set popup
-        self.add_popup = PopupMainDialog()
-        self.add_popup.m_titleBar.close.clicked.connect(self.close_add_cloud)
-        self.add_popup.m_popupMenuBar.checkBtn.clicked.connect(self.check_add_cloud)
+        self.addMenu.addAction(self.googleAddAction)
+        self.addMenu.addAction(self.boxAddAction)
+        self.addMenu.addAction(self.dropboxAddAction)
+
+        # add cloud menu button
+        self.addCloudBtn = QtWidgets.QPushButton()
+        self.addCloudBtn.setIcon(QtGui.QIcon('images/add_cloud.png'))
+        self.addCloudBtn.setMenu(self.addMenu)
+
 
     def directory_arrange_action(self):
         print("arrange")
 
-    def add_cloud_action(self):
-        self.add_popup.exec_()
-
-    def close_add_cloud(self):
-        self.add_popup.close()
-
-    def check_add_cloud(self):
-        ret = self.add_popup.get_add_cloud_data()
-        if ret[1] == "":
-            print("none")
+    # progressbar's color, percent
+    def set_progressbar(self, value):
+        self.progressBar.setValue(value)
+        if value > 80:
+            self.progressBar.setStyleSheet("""
+            QProgressBar {
+                background-color:white;
+                border: 2px solid grey;
+                border-radius: 5px;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: red; 
+                width: 20px;
+            }""")
+        elif value > 50:
+            self.progressBar.setStyleSheet("""
+            QProgressBar {
+                background-color:white;
+                border: 2px solid grey;
+                border-radius: 5px;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #orange; 
+                width: 20px;
+            }""")
         else:
-            print(ret[0])
-        mainUI.m_statusBar.statusLabel.setText(ret[0]+" (" + ret[1] + ") is conntected")
-
-    def remove_cloud_action(self):
-        print("remove")
-
-    def setting_action(self):
-        print("setting")
+            self.progressBar.setStyleSheet("""
+            QProgressBar {
+                background-color:white;
+                border: 2px solid grey;
+                border-radius: 5px;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #05B8CC; 
+                width: 20px;
+            }""")
 
 
 class StatusBar(QtWidgets.QDialog):
@@ -249,9 +291,19 @@ class DirectoryViewer(QtWidgets.QFrame):
         self.label1 = QtWidgets.QLabel("virtual directory")
         box.addWidget(self.label1)
 
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls:
+            event.accept()
+        else:
+            event.ignore()
+
     def dropEvent(self, event):
-            print(event)
-            print(event.mimeData().text())
+        if event.mimeData().hasUrls:
+            for url in event.mimeData().urls():
+                print(str(url.toLocalFile()))
+                print(url.toDisplayString())
+                currentfile = QFile(url.toLocalFile())
+
 
 
 class MainFrame(QtWidgets.QFrame):
@@ -284,11 +336,12 @@ class MainFrame(QtWidgets.QFrame):
         vbox.addWidget(self.m_statusBar)
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
+        self.menubar_action()
 
-    def contentWidget(self):
+    def content_widget(self):
         return self.m_content
 
-    def titleBar(self):
+    def title_bar(self):
         return self.m_titleBar
 
     def mousePressEvent(self, event):
@@ -301,6 +354,28 @@ class MainFrame(QtWidgets.QFrame):
 
     def mouseReleaseEvent(self, event):
         m_mouse_down = False
+
+    def menubar_action(self):
+        # set trigger to action
+        self.m_menuBar.googleAddAction.triggered.connect(self.google_drive_clicked)
+        self.m_menuBar.boxAddAction.triggered.connect(self.box_clicked)
+        self.m_menuBar.dropboxAddAction.triggered.connect(self.dropbox_clicked)
+
+    def google_drive_clicked(self):
+        print("google drive added")
+        self.m_statusBar.statusLabel.setText("Google Added")
+        # do something with browser
+        # get return value
+
+    def box_clicked(self):
+        print("box added")
+        # do something with browser
+        # get return value
+
+    def dropbox_clicked(self):
+        print("dropbox added")
+        # do something with browser
+        # get return value
 
 
 if __name__ == '__main__':
