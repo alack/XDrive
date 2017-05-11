@@ -285,25 +285,90 @@ class DirectoryViewer(QtWidgets.QFrame):
         """
         self.setStyleSheet(css)
         self.setMinimumSize(800, 400)
+        self.setFrameStyle(QtWidgets.QFrame.Sunken | QtWidgets.QFrame.StyledPanel)
         self.setAcceptDrops(True)
+        self.layout = QtWidgets.QGridLayout(self)
+        self.add_icon_to_directory()
 
-        box = QtWidgets.QHBoxLayout(self)
-        self.label1 = QtWidgets.QLabel("virtual directory")
-        box.addWidget(self.label1)
+    def add_icon_to_directory(self):
+        tempIcon = QtWidgets.QLabel(self)
+        tempIcon.setPixmap(QtGui.QPixmap('images/folder.png'))
+        tempIcon.show()
+        tempIcon.setAttribute(Qt.WA_DeleteOnClose)
+        self.layout.addWidget(tempIcon)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls:
-            event.accept()
+        if event.mimeData().hasFormat('application/x-dnditemdata'):
+            if event.source() == self:
+                event.setDropAction(Qt.MoveAction)
+                event.accept()
+            else:
+                event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasFormat('application/x-dnditemdata'):
+            if event.source() == self:
+                event.setDropAction(Qt.MoveAction)
+                event.accept()
+            else:
+                event.acceptProposedAction()
         else:
             event.ignore()
 
     def dropEvent(self, event):
-        if event.mimeData().hasUrls:
-            for url in event.mimeData().urls():
-                print(str(url.toLocalFile()))
-                print(url.toDisplayString())
-                currentfile = QFile(url.toLocalFile())
+        if event.mimeData().hasFormat('application/x-dnditemdata'):
+            itemData = event.mimeData().data('application/x-dnditemdata')
+            dataStream = QDataStream(itemData, QIODevice.ReadOnly)
+            pixmap = QtGui.QPixmap()
+            offset = QPoint()
+            dataStream >> pixmap >> offset
 
+            newIcon = QtWidgets.QLabel(self)
+            newIcon.setPixmap(pixmap)
+            newIcon.move(event.pos() - offset)
+            newIcon.show()
+            newIcon.setAttribute(Qt.WA_DeleteOnClose)
+
+            if event.source() == self:
+                event.setDropAction(Qt.MoveAction)
+                event.accept()
+            else:
+                event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def mousePressEvent(self, event):
+        child = self.childAt(event.pos())
+        if not child:
+            return
+        pixmap = QtGui.QPixmap(child.pixmap())
+        itemData = QByteArray()
+        dataStream = QDataStream(itemData, QIODevice.WriteOnly)
+        dataStream << pixmap << QPoint(event.pos() - child.pos())
+
+        mimeData = QMimeData()
+        mimeData.setData('application/x-dnditemdata', itemData)
+
+        drag = QtGui.QDrag(self)
+        drag.setMimeData(mimeData)
+        drag.setPixmap(pixmap)
+        drag.setHotSpot(event.pos() - child.pos())
+
+        tempPixmap = QtGui.QPixmap(pixmap)
+        painter = QtGui.QPainter()
+        painter.begin(tempPixmap)
+        painter.fillRect(pixmap.rect(), QtGui.QColor(127, 127, 127, 127))
+        painter.end()
+
+        child.setPixmap(tempPixmap)
+
+        if drag.exec_(Qt.CopyAction | Qt.MoveAction, Qt.CopyAction) == Qt.MoveAction:
+            child.close()
+        else:
+            child.show()
+            child.setPixmap(pixmap)
 
 
 class MainFrame(QtWidgets.QFrame):
@@ -376,6 +441,33 @@ class MainFrame(QtWidgets.QFrame):
         print("dropbox added")
         # do something with browser
         # get return value
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls:
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls:
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls:
+            upload_list = event.mimeData().urls()
+            count = len(upload_list)
+            if count >= 2:
+                status = str(count)+" files are uploading"
+                self.m_statusBar.statusLabel.setText(status)
+            elif count == 1:
+                status = str(upload_list[0].toLocalFile())
+                self.m_statusBar.statusLabel.setText(str(upload_list[0].toLocalFile())+" is uploading")
+            for url in event.mimeData().urls():
+                print(str(url.toLocalFile()))
+        else:
+            event.ignore()
 
 
 if __name__ == '__main__':
