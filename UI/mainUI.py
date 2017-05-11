@@ -1,7 +1,10 @@
 import sys
+from urllib.parse import urlparse
+from os.path import splitext
 from PyQt5 import QtWidgets, QtGui, QtCore, uic
 from PyQt5.QtCore import *
-from googleDrive import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 
 
 # TitleBar class (custom)
@@ -152,10 +155,13 @@ class MenuBar(QtWidgets.QFrame):
         self.progressBar = QtWidgets.QProgressBar()
         self.progressBar.setValue(0)  # default
 
+        # set home button
+        self.homeBtn = QtWidgets.QToolButton()
+        self.homeBtn.setIcon(QtGui.QIcon('images/home.png'))
+
         # set setting button
         self.settingBtn = QtWidgets.QToolButton()
         self.settingBtn.setIcon(QtGui.QIcon('images/setting.png'))
-        self.settingBtn.setMouseTracking(True)
 
         # set array button
         self.arrangeBtn = QtWidgets.QToolButton()
@@ -170,7 +176,7 @@ class MenuBar(QtWidgets.QFrame):
 
         self.layout = QtWidgets.QHBoxLayout(self)
         self.layout.addWidget(self.progressBar)
-        self.layout.addWidget(QtWidgets.QLabel("     "))
+        self.layout.addWidget(self.homeBtn)
         self.layout.addWidget(self.arrangeBtn)
         self.layout.addWidget(self.addCloudBtn)
         self.layout.addWidget(self.removeCloudBtn)
@@ -274,103 +280,6 @@ class StatusBar(QtWidgets.QDialog):
         self.maxNormal = False
 
 
-class DirectoryViewer(QtWidgets.QFrame):
-    def __init__(self, parent=None):
-        QtWidgets.QFrame.__init__(self, parent)
-        css = """
-        QFrame{
-            Background : #FFFFFF;
-            Color:black;
-        }
-        """
-        self.setStyleSheet(css)
-        self.setMinimumSize(800, 400)
-        self.setFrameStyle(QtWidgets.QFrame.Sunken | QtWidgets.QFrame.StyledPanel)
-        self.setAcceptDrops(True)
-        self.layout = QtWidgets.QGridLayout(self)
-        self.add_icon_to_directory()
-
-    def add_icon_to_directory(self):
-        tempIcon = QtWidgets.QLabel(self)
-        tempIcon.setPixmap(QtGui.QPixmap('images/folder.png'))
-        tempIcon.show()
-        tempIcon.setAttribute(Qt.WA_DeleteOnClose)
-        self.layout.addWidget(tempIcon)
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat('application/x-dnditemdata'):
-            if event.source() == self:
-                event.setDropAction(Qt.MoveAction)
-                event.accept()
-            else:
-                event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasFormat('application/x-dnditemdata'):
-            if event.source() == self:
-                event.setDropAction(Qt.MoveAction)
-                event.accept()
-            else:
-                event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event):
-        if event.mimeData().hasFormat('application/x-dnditemdata'):
-            itemData = event.mimeData().data('application/x-dnditemdata')
-            dataStream = QDataStream(itemData, QIODevice.ReadOnly)
-            pixmap = QtGui.QPixmap()
-            offset = QPoint()
-            dataStream >> pixmap >> offset
-
-            newIcon = QtWidgets.QLabel(self)
-            newIcon.setPixmap(pixmap)
-            newIcon.move(event.pos() - offset)
-            newIcon.show()
-            newIcon.setAttribute(Qt.WA_DeleteOnClose)
-
-            if event.source() == self:
-                event.setDropAction(Qt.MoveAction)
-                event.accept()
-            else:
-                event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def mousePressEvent(self, event):
-        child = self.childAt(event.pos())
-        if not child:
-            return
-        pixmap = QtGui.QPixmap(child.pixmap())
-        itemData = QByteArray()
-        dataStream = QDataStream(itemData, QIODevice.WriteOnly)
-        dataStream << pixmap << QPoint(event.pos() - child.pos())
-
-        mimeData = QMimeData()
-        mimeData.setData('application/x-dnditemdata', itemData)
-
-        drag = QtGui.QDrag(self)
-        drag.setMimeData(mimeData)
-        drag.setPixmap(pixmap)
-        drag.setHotSpot(event.pos() - child.pos())
-
-        tempPixmap = QtGui.QPixmap(pixmap)
-        painter = QtGui.QPainter()
-        painter.begin(tempPixmap)
-        painter.fillRect(pixmap.rect(), QtGui.QColor(127, 127, 127, 127))
-        painter.end()
-
-        child.setPixmap(tempPixmap)
-
-        if drag.exec_(Qt.CopyAction | Qt.MoveAction, Qt.CopyAction) == Qt.MoveAction:
-            child.close()
-        else:
-            child.show()
-            child.setPixmap(pixmap)
-
-
 class MainFrame(QtWidgets.QFrame):
     def __init__(self, parent=None):
         QtWidgets.QFrame.__init__(self, parent)
@@ -392,12 +301,11 @@ class MainFrame(QtWidgets.QFrame):
         self.m_titleBar = TitleBar(self)
         self.m_content = QtWidgets.QWidget(self)
         self.m_menuBar = MenuBar(self)
-        self.m_directoryViewer = DirectoryViewer(self)
         self.m_statusBar = StatusBar(self)
         vbox = QtWidgets.QVBoxLayout(self)
         vbox.addWidget(self.m_titleBar)
         vbox.addWidget(self.m_menuBar)
-        vbox.addWidget(self.m_directoryViewer)
+        vbox.addWidget(DirectoryViewer())
         vbox.addWidget(self.m_statusBar)
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
@@ -466,8 +374,129 @@ class MainFrame(QtWidgets.QFrame):
                 self.m_statusBar.statusLabel.setText(str(upload_list[0].toLocalFile())+" is uploading")
             for url in event.mimeData().urls():
                 print(str(url.toLocalFile()))
+                path = urlparse(url.toLocalFile()).path
+                ext = splitext(path)[1]
+                print(ext)
         else:
             event.ignore()
+
+
+class DirectoryViewer(QWidget):
+    def __init__(self, parent=None):
+        super(DirectoryViewer, self).__init__(parent)
+        self.piecePixmaps = []
+        self.pieceRects = []
+        self.pieceLocations = []
+        self.highlightedRect = QRect()
+        self.setAcceptDrops(True)
+        self.setMinimumSize(400, 400)
+
+    def clear(self):
+        self.pieceLocations = []
+        self.piecePixmaps = []
+        self.pieceRects = []
+        self.highlightedRect = QRect()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat('image/x-puzzle-piece'):
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragLeaveEvent(self, event):
+        updateRect = self.highlightedRect
+        self.highlightedRect = QRect()
+        self.update(updateRect)
+        event.accept()
+
+    def dragMoveEvent(self, event):
+        updateRect = self.highlightedRect.united(self.targetSquare(event.pos()))
+        if event.mimeData().hasFormat('image/x-puzzle-piece'):
+            self.highlightedRect = self.targetSquare(event.pos())
+            event.setDropAction(Qt.MoveAction)
+            event.accept()
+        else:
+            self.highlightedRect = QRect()
+            event.ignore()
+        self.update(updateRect)
+
+    def dropEvent(self, event):
+        if event.mimeData().hasFormat('image/x-puzzle-piece'):
+            pieceData = event.mimeData().data('image/x-puzzle-piece')
+            stream = QDataStream(pieceData, QIODevice.ReadOnly)
+            square = self.targetSquare(event.pos())
+            pixmap = QPixmap()
+            location = QPoint()
+            stream >> pixmap >> location
+
+            self.pieceLocations.append(location)
+            self.piecePixmaps.append(pixmap)
+            self.pieceRects.append(square)
+            self.hightlightedRect = QRect()
+            self.update(square)
+            event.setDropAction(Qt.MoveAction)
+            event.accept()
+        else:
+            self.highlightedRect = QRect()
+            event.ignore()
+
+    def find_piece(self, pieceRect):
+        try:
+            return self.pieceRects.index(pieceRect)
+        except ValueError:
+            return -1
+
+    def mousePressEvent(self, event):
+        square = self.targetSquare(event.pos())
+        found = self.find_piece(square)
+
+        if found == -1:
+            return
+
+        location = self.pieceLocations[found]
+        pixmap = self.piecePixmaps[found]
+        del self.pieceLocations[found]
+        del self.piecePixmaps[found]
+        del self.pieceRects[found]
+
+        self.update(square)
+
+        itemData = QByteArray()
+        dataStream = QDataStream(itemData, QIODevice.WriteOnly)
+
+        dataStream << pixmap << location
+
+        mimeData = QMimeData()
+        mimeData.setData('image/x-puzzle-piece', itemData)
+
+        drag = QDrag(self)
+        drag.setMimeData(mimeData)
+        drag.setHotSpot(event.pos() - square.topLeft())
+        drag.setPixmap(pixmap)
+
+        if drag.exec_(Qt.MoveAction) != Qt.MoveAction:
+            self.pieceLocations.insert(found, location)
+            self.piecePixmaps.insert(found, pixmap)
+            self.pieceRects.insert(found, square)
+            self.update(self.targetSquare(event.pos()))
+
+    def paintEvent(self, event):
+        painter = QPainter()
+        painter.begin(self)
+        painter.fillRect(event.rect(), Qt.white)
+
+        if self.highlightedRect.isValid():
+            painter.setBrush(QColor("#ffcccc"))
+            painter.setPen(Qt.NoPen)
+            painter.drawRect(self.highlightedRect.adjusted(0, 0, -1, -1))
+
+        for rect, pixmap in zip(self.pieceRects, self.piecePixmaps):
+            painter.drawPixmap(rect, pixmap)
+
+        painter.end()
+
+    def targetSquare(self, position):
+        return QRect(position.x() // 80 * 80, position.y() // 80 * 80, 80, 80)
 
 
 if __name__ == '__main__':
