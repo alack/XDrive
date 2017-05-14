@@ -171,6 +171,10 @@ class MenuBar(QtWidgets.QFrame):
         self.arrangeBtn = QtWidgets.QToolButton()
         self.arrangeBtn.setIcon(QtGui.QIcon('images/arrange.png'))
 
+        # set add folder button
+        self.addFolderBtn = QtWidgets.QToolButton()
+        self.addFolderBtn.setIcon(QtGui.QIcon('images/add_folder_blue.png'))
+
         # add cloud menu
         self.add_menu_setting()
 
@@ -181,13 +185,14 @@ class MenuBar(QtWidgets.QFrame):
         self.layout = QtWidgets.QHBoxLayout(self)
         self.layout.addWidget(self.progressBar)
         self.layout.addWidget(self.homeBtn)
+        self.layout.addWidget(self.addFolderBtn)
         self.layout.addWidget(self.arrangeBtn)
         self.layout.addWidget(self.addCloudBtn)
         self.layout.addWidget(self.removeCloudBtn)
         self.layout.addWidget(self.settingBtn)
 
         # add action
-        self.arrangeBtn.clicked.connect(self.directory_arrange_action)
+#        self.arrangeBtn.clicked.connect(self.directory_arrange_action)
 
         # set alignment
         self.layout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -308,7 +313,7 @@ class MainFrame(QtWidgets.QFrame):
         self.m_titleBar = TitleBar(self)
         self.m_menuBar = MenuBar(self)
         self.m_statusBar = StatusBar(self)
-        self.m_listview = MyListView()
+        self.m_listview = DirectoryView()
         self.model = PiecesModel(self)
         self.m_listview.setModel(self.model)
 
@@ -370,11 +375,13 @@ class MainFrame(QtWidgets.QFrame):
             elif count == 1:
                 status = str(upload_list[0].toLocalFile())
                 self.m_statusBar.statusLabel.setText(str(upload_list[0].toLocalFile())+" is uploading")
-            for url in event.mimeData().urls():
+            for url in upload_list:
                 print(str(url.toLocalFile()))
                 path = urlparse(url.toLocalFile()).path
                 ext = splitext(path)[1]
                 print(ext)
+                self.add_icons(ext, event.pos())
+
         elif event.mimeData().hasFormat('image/x-puzzle-piece'):
             pieceData = event.mimeData().data('image/x-puzzle-piece')
             stream = QDataStream(pieceData, QIODevice.ReadOnly)
@@ -399,58 +406,26 @@ class MainFrame(QtWidgets.QFrame):
         except ValueError:
             return -1
 
-    def mouseMoveEvent(self, event):
-        x = event.x()
-        y = event.y()
-
     def mouseReleaseEvent(self, event):
         m_mouse_down = False
 
     def mousePressEvent(self, event):
         self.m_old_pos = event.pos()
         self.m_mouse_down = (event.button() == Qt.LeftButton)
-        square = self.m_listview.targetSquare(event.pos())
-        found = self.m_listview.find_piece(square)
-        if found == -1:
-            return
-        location = self.m_listview.pieceLocations[found]
-        pixmap = self.m_listview.piecePixmaps[found]
-        del self.m_listview.pieceLocations[found]
-        del self.m_listview.piecePixmaps[found]
-        del self.m_listview.pieceRects[found]
-        self.m_listview.update(square)
-        itemData = QByteArray()
-        dataStream = QDataStream(itemData, QIODevice.WriteOnly)
-        dataStream << pixmap << location
-        mimeData = QMimeData()
-        mimeData.setData('image/x-puzzle-piece', itemData)
-        drag = QDrag(self)
-        drag.setMimeData(mimeData)
-        drag.setHotSpot(event.pos() - square.topLeft())
-        drag.setPixmap(pixmap)
-        if drag.exec_(Qt.MoveAction) != Qt.MoveAction:
-            self.m_listview.pieceLocations.insert(found, location)
-            self.m_listview.piecePixmaps.insert(found, pixmap)
-            self.m_listview.pieceRects.insert(found, square)
-            self.m_listview.update(self.targetSquare(event.pos()))
 
-    def paintEvent(self, event):
-        painter = QPainter()
-        painter.begin(self)
-        painter.fillRect(event.rect(), Qt.white)
-        if self.m_listview.highlightedRect.isValid():
-            painter.setBrush(QColor("#ffcccc"))
-            painter.setPen(Qt.NoPen)
-            painter.drawRect(self.highlightedRect.adjusted(0, 0, -1, -1))
-        for rect, pixmap in zip(self.m_listview.pieceRects, self.m_listview.piecePixmaps):
-            painter.drawPixmap(rect, pixmap)
-        painter.end()
+    def add_icons(self, ext, pos):
+        if ext == ".md":
+            image = QPixmap('images/folder.png')
+        elif ext == ".png":
+            image = QPixmap('images/box.png')
+        else:
+            image = QPixmap('images/close_after.png')
+        self.model.addPieces(image)
 
 
 class PiecesModel(QAbstractListModel):
     def __init__(self, parent=None):
         super(PiecesModel, self).__init__(parent)
-
         self.locations = []
         self.pixmaps = []
 
@@ -471,11 +446,7 @@ class PiecesModel(QAbstractListModel):
         return None
 
     def addPiece(self, pixmap, location):
-        if random.random() < 0.5:
-            row = 0
-        else:
-            row = len(self.pixmaps)
-
+        row = len(self.pixmaps)
         self.beginInsertRows(QModelIndex(), row, row)
         self.pixmaps.insert(row, pixmap)
         self.locations.insert(row, location)
@@ -570,25 +541,20 @@ class PiecesModel(QAbstractListModel):
 
     def addPieces(self, pixmap):
         self.beginRemoveRows(QModelIndex(), 0, 24)
-        self.pixmaps = []
-        self.locations = []
+        #self.pixmaps = []
+        #self.locations = []
         self.endRemoveRows()
-
-        for y in range(5):
-            for x in range(5):
-                pieceImage = pixmap.copy(x * 80, y * 80, 80, 80)
-                self.addPiece(pieceImage, QPoint(x, y))
+        self.addPiece(pixmap, QPoint(0, 0))
 
 
-class MyListView(QListView):
+class DirectoryView(QListView):
     def __init__(self, parent=None):
-        super(MyListView, self).__init__(parent)
+        super(DirectoryView, self).__init__(parent)
         self.setMinimumSize(600, 400)
         self.setViewMode(QListView.IconMode)
         self.setIconSize(QSize(40, 40))
         self.setGridSize(QSize(60, 60))
         self.setMovement(QListView.Snap)
-
         self.piecePixmaps = []
         self.pieceRects = []
         self.pieceLocations = []
@@ -604,7 +570,6 @@ class MyListView(QListView):
 
     def targetSquare(self, position):
         return QRect(position.x() // 80 * 80, position.y() // 80 * 80, 80, 80)
-
 
 
 if __name__ == '__main__':
