@@ -1,5 +1,4 @@
 import sys
-import random
 from urllib.parse import urlparse
 from os.path import splitext
 from PyQt5 import QtWidgets, QtGui, QtCore, uic
@@ -11,9 +10,6 @@ from PyQt5.QtGui import *
 # TitleBar class (custom)
 # Tooltip(minimize, maximize, close)
 # Set css to widget, dialog, button
-from PyQt5.QtWidgets import QListView
-
-
 class TitleBar(QtWidgets.QFrame):
     def __init__(self, parent=None):
         QtWidgets.QFrame.__init__(self, parent)
@@ -216,7 +212,6 @@ class MenuBar(QtWidgets.QFrame):
         self.addCloudBtn.setIcon(QtGui.QIcon('images/add_cloud.png'))
         self.addCloudBtn.setMenu(self.addMenu)
 
-
     def directory_arrange_action(self):
         print("arrange")
 
@@ -261,6 +256,64 @@ class MenuBar(QtWidgets.QFrame):
             }""")
 
 
+class DirectoryBar(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        QtWidgets.QWidget.__init__(self, parent)
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        # set css for TitleBar
+        css = """
+        QWidget{
+            Background: #FFFFFF;
+            border-radius: 1px;
+            color: black;
+        }
+        """
+        # set css and background
+        self.setAutoFillBackground(True)
+        self.setBackgroundRole(QtGui.QPalette.Highlight)
+        self.setStyleSheet(css)
+
+        self.directoryButtonGroup = QButtonGroup()
+        self.directoryButtonGroup.buttonClicked[QAbstractButton].connect(self.on_buttonClicked)
+        # set horizontal box
+        self.hbox = QtWidgets.QHBoxLayout()
+        self.setLayout(self.hbox)
+        self.hbox.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        self.set_home()
+        self.add_under_directory("1")
+        self.add_under_directory("2")
+        self.add_under_directory("3")
+        self.add_under_directory("4")
+        self.add_under_directory("5")
+
+    def set_home(self):
+        homeButton = QToolButton()
+        homeButton.setText("home")
+        self.directoryButtonGroup.addButton(homeButton)
+        self.hbox.addWidget(homeButton)
+
+    def add_under_directory(self, dirName):
+        button = QToolButton()
+        button.setText(dirName)
+        self.directoryButtonGroup.addButton(button)
+        self.hbox.addWidget(button)
+
+    def del_under_directory(self, button):
+        button.deleteLater()
+        self.directoryButtonGroup.removeButton(button)
+
+    def go_specific_directory(self, button):
+        flag = 0
+        for x in self.directoryButtonGroup.buttons():
+            if flag == 1:
+                self.del_under_directory(x)
+            if x == button:
+                flag = 1
+
+    def on_buttonClicked(self, button):
+        self.go_specific_directory(button)
+
+
 class StatusBar(QtWidgets.QDialog):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
@@ -299,27 +352,26 @@ class MainFrame(QtWidgets.QFrame):
             font:13px ;
             font-weight:bold;
             }
-        QListView{
-            Background: #FFFFFF;
-        }
         """
         self.setStyleSheet(css)
         self.m_mouse_down = False
         self.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.setMouseTracking(True)
+        self.setMinimumSize(800, 500)
         self.setAcceptDrops(True)
 
-        self.m_titleBar = TitleBar(self)
-        self.m_menuBar = MenuBar(self)
-        self.m_statusBar = StatusBar(self)
+        self.m_titleBar = TitleBar()
+        self.m_menuBar = MenuBar()
+        self.m_statusBar = StatusBar()
         self.m_listview = DirectoryView()
         self.model = PiecesModel(self)
         self.m_listview.setModel(self.model)
+        self.m_directoryBar = DirectoryBar()
 
         vbox = QtWidgets.QVBoxLayout(self)
         vbox.addWidget(self.m_titleBar)
         vbox.addWidget(self.m_menuBar)
+        vbox.addWidget(self.m_directoryBar)
         vbox.addWidget(self.m_listview)
         vbox.addWidget(self.m_statusBar)
         vbox.setContentsMargins(0, 0, 0, 0)
@@ -378,9 +430,12 @@ class MainFrame(QtWidgets.QFrame):
             for url in upload_list:
                 print(str(url.toLocalFile()))
                 path = urlparse(url.toLocalFile()).path
+                splits = path.split("/")
+                splitLen = len(splits)
+                fileName = splits[splitLen-1]
                 ext = splitext(path)[1]
                 print(ext)
-                self.add_icons(ext, event.pos())
+                self.add_icons(fileName, ext)
 
         elif event.mimeData().hasFormat('image/x-puzzle-piece'):
             pieceData = event.mimeData().data('image/x-puzzle-piece')
@@ -413,14 +468,30 @@ class MainFrame(QtWidgets.QFrame):
         self.m_old_pos = event.pos()
         self.m_mouse_down = (event.button() == Qt.LeftButton)
 
-    def add_icons(self, ext, pos):
-        if ext == ".md":
+    def add_icons(self, fileName, ext):
+        print(fileName)
+        if ext == ".pdf":
+            image = QPixmap('images/pdf.png')
+        elif ext == ".png" or ext == '.jpg' or ext == '.jpeg' or ext == '.jpeg':
+            image = QPixmap('images/png.png')
+        elif ext == '.zip':
+            image = QPixmap('images/zip.png')
+        elif ext == '.txt':
+            image = QPixmap('images/txt.png')
+        elif ext == '.xlsx' or ext == '.xls':
+            image = QPixmap('images/xlsx.png')
+        elif ext == '.py':
+            image = QPixmap('images/py.png')
+        # folder
+        elif ext == "":
             image = QPixmap('images/folder.png')
-        elif ext == ".png":
-            image = QPixmap('images/box.png')
+            """
+            add with loop
+            exit with return
+           """
         else:
             image = QPixmap('images/close_after.png')
-        self.model.addPieces(image)
+        self.model.addPiece(image, QPoint(0, 0))
 
 
 class PiecesModel(QAbstractListModel):
@@ -539,18 +610,19 @@ class PiecesModel(QAbstractListModel):
     def supportedDropActions(self):
         return Qt.CopyAction | Qt.MoveAction
 
-    def addPieces(self, pixmap):
-        self.beginRemoveRows(QModelIndex(), 0, 24)
-        #self.pixmaps = []
-        #self.locations = []
-        self.endRemoveRows()
-        self.addPiece(pixmap, QPoint(0, 0))
-
 
 class DirectoryView(QListView):
     def __init__(self, parent=None):
         super(DirectoryView, self).__init__(parent)
-        self.setMinimumSize(600, 400)
+        css = """
+        QListView{
+            Background: #FFFFFF;
+            color:white;
+            font:13px ;
+            font-weight:bold;
+        }
+        """
+        self.setStyleSheet(css)
         self.setViewMode(QListView.IconMode)
         self.setIconSize(QSize(40, 40))
         self.setGridSize(QSize(60, 60))
@@ -558,6 +630,7 @@ class DirectoryView(QListView):
         self.piecePixmaps = []
         self.pieceRects = []
         self.pieceLocations = []
+        self.iconNames = []
         self.highlightedRect = QRect()
         self.setAcceptDrops(True)
         self.setMinimumSize(400, 400)
@@ -566,10 +639,11 @@ class DirectoryView(QListView):
         self.pieceLocations = []
         self.piecePixmaps = []
         self.pieceRects = []
+        self.iconNames = []
         self.highlightedRect = QRect()
 
     def targetSquare(self, position):
-        return QRect(position.x() // 80 * 80, position.y() // 80 * 80, 80, 80)
+        return QRect(position.x() // 60 * 60, position.y() // 60 * 60, 60, 60)
 
 
 if __name__ == '__main__':
