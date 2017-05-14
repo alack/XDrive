@@ -1,4 +1,5 @@
 import sys
+import os
 from urllib.parse import urlparse
 from os.path import splitext
 from PyQt5 import QtWidgets, QtGui, QtCore, uic
@@ -6,6 +7,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+current_files = []
 
 # TitleBar class (custom)
 # Tooltip(minimize, maximize, close)
@@ -188,7 +190,7 @@ class MenuBar(QtWidgets.QFrame):
         self.layout.addWidget(self.settingBtn)
 
         # add action
-#        self.arrangeBtn.clicked.connect(self.directory_arrange_action)
+        self.arrangeBtn.clicked.connect(self.directory_arrange_action)
 
         # set alignment
         self.layout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -213,7 +215,7 @@ class MenuBar(QtWidgets.QFrame):
         self.addCloudBtn.setMenu(self.addMenu)
 
     def directory_arrange_action(self):
-        print("arrange")
+        debugPanel.textEdit.insertPlainText("arrange button clicked\n")
 
     # progressbar's color, percent
     def set_progressbar(self, value):
@@ -259,7 +261,6 @@ class MenuBar(QtWidgets.QFrame):
 class DirectoryBar(QtWidgets.QDialog):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
-        self.setWindowFlags(Qt.FramelessWindowHint)
         # set css for TitleBar
         css = """
         QWidget{
@@ -269,49 +270,49 @@ class DirectoryBar(QtWidgets.QDialog):
         }
         """
         # set css and background
+        self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Highlight)
         self.setStyleSheet(css)
 
         self.directoryButtonGroup = QButtonGroup()
-        self.directoryButtonGroup.buttonClicked[QAbstractButton].connect(self.on_buttonClicked)
+        self.directoryButtonGroup.buttonClicked[QAbstractButton].connect(self.on_directory_button_clicked)
         # set horizontal box
         self.hbox = QtWidgets.QHBoxLayout()
         self.setLayout(self.hbox)
         self.hbox.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.set_home()
-        self.add_under_directory("1")
-        self.add_under_directory("2")
-        self.add_under_directory("3")
-        self.add_under_directory("4")
-        self.add_under_directory("5")
+        self.set_home_button()
+        self.add_under_directory_button("1")
+        self.add_under_directory_button("2")
+        self.add_under_directory_button("3")
+        self.add_under_directory_button("4")
+        self.add_under_directory_button("5")
 
-    def set_home(self):
-        homeButton = QToolButton()
-        homeButton.setText("home")
-        self.directoryButtonGroup.addButton(homeButton)
-        self.hbox.addWidget(homeButton)
+    def set_home_button(self):
+        for x in self.directoryButtonGroup.buttons():
+            self.del_under_directory_button(x)
+        self.add_under_directory_button("home")
 
-    def add_under_directory(self, dirName):
+    def add_under_directory_button(self, dirName):
         button = QToolButton()
         button.setText(dirName)
         self.directoryButtonGroup.addButton(button)
         self.hbox.addWidget(button)
 
-    def del_under_directory(self, button):
+    def del_under_directory_button(self, button):
         button.deleteLater()
         self.directoryButtonGroup.removeButton(button)
 
-    def go_specific_directory(self, button):
+    def go_specific_directory_button(self, button):
         flag = 0
         for x in self.directoryButtonGroup.buttons():
             if flag == 1:
-                self.del_under_directory(x)
+                self.del_under_directory_button(x)
             if x == button:
                 flag = 1
 
-    def on_buttonClicked(self, button):
-        self.go_specific_directory(button)
+    def on_directory_button_clicked(self, button):
+        self.go_specific_directory_button(button)
 
 
 class StatusBar(QtWidgets.QDialog):
@@ -364,7 +365,8 @@ class MainFrame(QtWidgets.QFrame):
         self.m_menuBar = MenuBar()
         self.m_statusBar = StatusBar()
         self.m_listview = DirectoryView()
-        self.model = PiecesModel(self)
+        self.m_listview.doubleClicked.connect(self.listview_double_clicked)
+        self.model = PiecesModel()
         self.m_listview.setModel(self.model)
         self.m_directoryBar = DirectoryBar()
 
@@ -378,6 +380,13 @@ class MainFrame(QtWidgets.QFrame):
         vbox.setSpacing(0)
         self.menubar_action()
 
+    def listview_double_clicked(self, icons):
+        image = QPixmap('images/unknown.png')
+        self.model.add_piece(image, QPoint(0, 0))
+        """
+        need to correct
+        """
+
     def title_bar(self):
         return self.m_titleBar
 
@@ -386,20 +395,26 @@ class MainFrame(QtWidgets.QFrame):
         self.m_menuBar.googleAddAction.triggered.connect(self.google_drive_clicked)
         self.m_menuBar.boxAddAction.triggered.connect(self.box_clicked)
         self.m_menuBar.dropboxAddAction.triggered.connect(self.dropbox_clicked)
+        self.m_menuBar.homeBtn.clicked.connect(self.homebtn_clicked)
+
+    def homebtn_clicked(self):
+        self.m_directoryBar.set_home_button()
 
     def google_drive_clicked(self):
-        print("google drive added")
+        debugPanel.textEdit.insertPlainText("google drive clicked in google_drive_clicked\n")
         self.m_statusBar.statusLabel.setText("Google Added")
         # do something with browser
         # get return value
 
     def box_clicked(self):
-        print("box added")
+        debugPanel.textEdit.insertPlainText("box clicked in box_clicked\n")
+        self.m_statusBar.statusLabel.setText("Box Added")
         # do something with browser
         # get return value
 
     def dropbox_clicked(self):
-        print("dropbox added")
+        debugPanel.textEdit.insertPlainText("dropbox clicked in dropbox_clicked\n")
+        self.m_statusBar.statusLabel.setText("Dropbox Added")
         # do something with browser
         # get return value
 
@@ -428,14 +443,12 @@ class MainFrame(QtWidgets.QFrame):
                 status = str(upload_list[0].toLocalFile())
                 self.m_statusBar.statusLabel.setText(str(upload_list[0].toLocalFile())+" is uploading")
             for url in upload_list:
-                print(str(url.toLocalFile()))
+                debugPanel.textEdit.insertPlainText("file url : "+str(url.toLocalFile())+"\n")
                 path = urlparse(url.toLocalFile()).path
-                splits = path.split("/")
-                splitLen = len(splits)
-                fileName = splits[splitLen-1]
-                ext = splitext(path)[1]
-                print(ext)
-                self.add_icons(fileName, ext)
+                if os.path.isdir(path):
+                    self.add_folder(path)
+                else:
+                    self.add_icons(path)
 
         elif event.mimeData().hasFormat('image/x-puzzle-piece'):
             pieceData = event.mimeData().data('image/x-puzzle-piece')
@@ -468,8 +481,13 @@ class MainFrame(QtWidgets.QFrame):
         self.m_old_pos = event.pos()
         self.m_mouse_down = (event.button() == Qt.LeftButton)
 
-    def add_icons(self, fileName, ext):
-        print(fileName)
+    def add_icons(self, path):
+        splits = path.split("/")
+        splitLen = len(splits)
+        #fileName = splits[splitLen - 1]
+        #ext = splitext(path)[1]
+        ext = os.path.splitext(path)[-1]
+        print(ext)
         if ext == ".pdf":
             image = QPixmap('images/pdf.png')
         elif ext == ".png" or ext == '.jpg' or ext == '.jpeg' or ext == '.jpeg':
@@ -478,20 +496,39 @@ class MainFrame(QtWidgets.QFrame):
             image = QPixmap('images/zip.png')
         elif ext == '.txt':
             image = QPixmap('images/txt.png')
+        elif ext == '.mp4':
+            image = QPixmap('images/mp4.png')
+        elif ext == '.java':
+            image = QPixmap('images/java.png')
         elif ext == '.xlsx' or ext == '.xls':
             image = QPixmap('images/xlsx.png')
         elif ext == '.py':
             image = QPixmap('images/py.png')
-        # folder
-        elif ext == "":
-            image = QPixmap('images/folder.png')
-            """
-            add with loop
-            exit with return
-           """
+        elif ext == '.docx' or ext == '.rtf':
+            image = QPixmap('images/docx.png')
         else:
-            image = QPixmap('images/close_after.png')
-        self.model.addPiece(image, QPoint(0, 0))
+            image = QPixmap('images/unknown.png')
+        self.model.add_piece(image, QPoint(0, 0))
+        file_info = []
+        file_info.append(path)
+        file_info.append(ext)
+        current_files.append(file_info)
+
+    def add_folder(self, path):
+        try:
+            folder_name = os.path.split(path)[-1]
+            debugPanel.textEdit.insertPlainText("In add_folder, folder name : "+folder_name+"\n")
+            image = QPixmap('images/folder.png')
+            self.model.add_piece(image, QPoint(0, 0))
+            file_names = os.listdir(path)
+            for file in file_names:
+                sibling = os.path.join(path, file)
+                if os.path.isdir(sibling):
+                    self.add_folder(sibling)
+                else:
+                    print(path, "not folder")
+        except PermissionError:
+            pass
 
 
 class PiecesModel(QAbstractListModel):
@@ -516,7 +553,7 @@ class PiecesModel(QAbstractListModel):
 
         return None
 
-    def addPiece(self, pixmap, location):
+    def add_piece(self, pixmap, location):
         row = len(self.pixmaps)
         self.beginInsertRows(QModelIndex(), row, row)
         self.pixmaps.insert(row, pixmap)
@@ -646,9 +683,22 @@ class DirectoryView(QListView):
         return QRect(position.x() // 60 * 60, position.y() // 60 * 60, 60, 60)
 
 
+class DebugPanel(QFrame):
+    def __init__(self, parent=None):
+        super(DebugPanel, self).__init__(parent)
+        self.setMinimumSize(800, 300)
+        layout = QHBoxLayout(self)
+        self.setLayout(layout)
+        self.textEdit = QPlainTextEdit()
+        layout.addWidget(self.textEdit)
+
+
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     mainUI = MainFrame()
-    mainUI.move(60, 60)
+    mainUI.move(60, 0)
     mainUI.show()
+    debugPanel = DebugPanel()
+    debugPanel.move(60, 600)
+    debugPanel.show()
     app.exec_()
