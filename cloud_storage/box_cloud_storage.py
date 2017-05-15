@@ -213,7 +213,7 @@ def main():
     json_data = json.loads(f.read())
     f.close()
     storage = [[]]
-    for storage_name in storage_names
+    for storage_name in storage_names:
         for i in range(0, json_data[storage_name]['CNT']):
             storage[storage_name][i] = box_storage_controller(json_data[storage_name]['LIST'][i])
             box[i].authenticate()
