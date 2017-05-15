@@ -2,7 +2,7 @@ import dropbox
 from dropbox.files import WriteMode
 from dropbox import DropboxOAuth2FlowNoRedirect
 
-class Dropbox () :
+class Dropbox_storage_controller:
     APP_KEY = "cep4re0edd3vsmp"
     APP_SECRET = "7029x3nth5mykw9"
     def __init__(self, id, password):
