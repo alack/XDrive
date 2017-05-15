@@ -9,6 +9,7 @@ from PyQt5.QtGui import *
 
 current_files = []
 
+
 # TitleBar class (custom)
 # Tooltip(minimize, maximize, close)
 # Set css to widget, dialog, button
@@ -526,7 +527,7 @@ class MainFrame(QtWidgets.QFrame):
                 if os.path.isdir(sibling):
                     self.add_folder(sibling)
                 else:
-                    print(path, "not folder")
+                    debugPanel.textEdit.insertPlainText(path + " : not folder\n")
         except PermissionError:
             pass
 
