@@ -1,0 +1,25 @@
+{
+	"BOX" : {
+		"LIST" : [
+			{
+				"CLIENT_ID" : "dzoi6w486bus5wxah249kazsbb9bg2jl",
+				"CLIENT_SECRET" : "4hfnl7Dv601JyfawLHXxEFbqwipMJ6mb",
+				"ACCESS_TOKEN" : "h492pSg8qWD8l7DMXDijyjtGPWC3acie",
+				"REFRESH_TOKEN" : "a5LTAWX79BEuTRbyJU9Cm5waVetqVWF8j9sNQkCuvTBLX4rB9sUhjfCPoCFpHoWw"
+			}
+		],
+		"CNT" : 1
+	},
+	"GOOGLE" : {
+		"LIST" : [
+
+		],
+		"CNT" : 0
+	},
+	"DROPBOX" : {
+		"LIST" : [
+			
+		],
+		"CNT" : 0
+	}
+}
