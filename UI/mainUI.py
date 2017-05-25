@@ -1,16 +1,26 @@
-import sys
+import collections
+from exceptions import *
 import os
+import pathlib
+from store import *
+import sys
 from urllib.parse import urlparse
 from UIComponent import *
-from drivetest.web2 import *
-
-
+from UniDrive import UniDrive
+import webbrowser
 
 
 class MainFrame(QtWidgets.QFrame):
-    current_files = []
+    """
+        file_tree has directory in dictionary {'directory':'files in directory'}
+        file_in_current is file list which are in the current directory
+    """
     connected_drive_info = []
     drive_action_list = []
+    file_in_current = []
+    current_dir = "/"
+    totalStoragePercent = 0
+
     def __init__(self, parent=None):
         QtWidgets.QFrame.__init__(self, parent)
         css = """
@@ -46,19 +56,52 @@ class MainFrame(QtWidgets.QFrame):
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
         self.add_drive_menubar_action()
+        self.load_data_from_store_list()
+        self.debug = DebugPanel()
+        self.debug.move(60, 600)
+        self.debug.show()
 
-    def listview_double_clicked(self, icons):
-        image = QPixmap('images/unknown.png')
-        self.model.add_piece(image, QPoint(0, 0))
+    def load_data_from_store_list(self):
+        # need to get saved store list
+        # it's for init
+        infos = unidrive.get_store_list()
+        for store in infos:
+            type = "unknown"
+            if store['type'] == "GoogleDriveStore":
+                type = "Google"
+            if store['type'] == "DropboxStore":
+                type = "Dropbox"
+            # TODO add box
+            item = [type, store['name']]
+            self.connected_drive_info.append(item)
+            self.m_menuBar.remove_menu_add_item(item)
+
+    def listview_double_clicked(self, idx):
+        print("listview_double_clicked")
         """
-        need to correct
+        clicked_file = self.file_in_current[idx.row()]
+        print(clicked_file)
+        # TODO if clicked file is directory? go to under directory : ignore
+        if clicked_file.is_dir:
+            print("folder is clicked")
+            temp_dir = [DirectoryEntry("/asdf/bbb", True) for i in range(5)]
+            temp_dir.append(DirectoryEntry("asdf", False))
+            # TODO get file list of next directory
+            self.m_listview.set_directory(temp_dir) #UniDrive.get_list(checked_file)
+            # TODO set directory bar
+            # TODO set status bar
         """
 
     def title_bar(self):
         return self.m_titleBar
 
     def homebtn_clicked(self):
-        self.m_directoryBar.set_home_button()
+        self.m_directoryBar.set_root_button()
+        files = UniDrive.get_list('/')
+        # TODO need to corret
+        temp_files = []
+        self.m_listview.set_directory(temp_files)
+        self.m_directoryBar.set_root_button()
 
     def add_drive_menubar_action(self):
         # set trigger to action
@@ -68,26 +111,51 @@ class MainFrame(QtWidgets.QFrame):
         self.m_menuBar.homeBtn.clicked.connect(self.homebtn_clicked)
 
     def google_drive_clicked(self):
-        print("google drive clicked in google_drive_clicked\n")
-        self.m_statusBar.set_status_label("Google Added")
-        item = ["google", "djsc023401", "key"]
-        self.connected_drive_info.append(item)
-        self.m_menuBar.remove_menu_add_item(item)
-
-        # do something with browser
-        # get return value
+        # Get google auth url
+        try:
+            auth_url = unidrive.register_store('GoogleDriveStore', 'test-googledrive')
+            webbrowser.open_new(auth_url)
+            res = input('response url for test-googledrive :')
+            if unidrive.activate_store('test-googledrive', res):
+                self.m_statusBar.set_status_ok()
+                self.m_statusBar.statusLabel.setText('success test-googledrive')
+                recent_store = unidrive.get_recent_store()
+                item = ["Google", recent_store['name']]
+                self.connected_drive_info.append(item)
+                self.m_menuBar.remove_menu_add_item(item)
+            else:
+                self.m_statusBar.set_status_fail()
+                self.m_statusBar.statusLabel.setText('fail test-googledrive')
+        except Exception:
+            self.m_statusBar.set_status_fail()
+            self.m_statusBar.statusLabel.setText('test-googledrive is already registered')
 
     def box_clicked(self):
-        print("box clicked in box_clicked\n")
-        self.m_statusBar.set_status_label("Box Added")
-        # do something with browser
-        # get return value
+        # TODO need to write code about box get auth_url
+        # TODO delete Item from
+        item = ["box", "highalps", "z9123rnaz00cxv"]
+        self.m_statusBar.set_status_label("box Added, ("+item[0]+", "+item[1]+", "+item[2]+")")
+        # TODO delete Item to
 
     def dropbox_clicked(self):
-        print("dropbox clicked in dropbox_clicked\n")
-        self.m_statusBar.set_status_label("Dropbox Added")
-        # do something with browser
-        # get return value
+        # get dropbox auth_url
+        try:
+            auth_url = unidrive.register_store('DropboxStore', 'test-dropbox')
+            webbrowser.open_new(auth_url)
+            res = input('response url for test-dropbox :')
+            if unidrive.activate_store('test-dropbox', res):
+                self.m_statusBar.set_status_ok()
+                self.m_statusBar.statusLabel.setText('success test-dropbox')
+                recent_store = unidrive.get_recent_store()
+                item = ["Google", recent_store['name']]
+                self.connected_drive_info.append(item)
+                self.m_menuBar.remove_menu_add_item(item)
+            else:
+                self.m_statusBar.set_status_fail()
+                self.m_statusBar.statusLabel.setText('fail test-dropbox')
+        except Exception:
+            self.m_statusBar.set_status_fail()
+            self.m_statusBar.statusLabel.setText('test-googledrive is already registered')
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls:
@@ -107,6 +175,10 @@ class MainFrame(QtWidgets.QFrame):
         if event.mimeData().hasUrls:
             upload_list = event.mimeData().urls()
             count = len(upload_list)
+            self.totalStoragePercent += count
+            if self.totalStoragePercent > 100:
+                self.totalStoragePercent = 100
+            self.m_menuBar.set_progressbar(self.totalStoragePercent)
             if count >= 2:
                 status = str(count)+" files are uploading"
                 self.m_statusBar.set_status_label(status)
@@ -116,25 +188,13 @@ class MainFrame(QtWidgets.QFrame):
             for url in upload_list:
                 print("file url : "+str(url.toLocalFile())+"\n")
                 path = urlparse(url.toLocalFile()).path
-                if os.path.isdir(path):
-                    self.add_folder(path)
+                cur_path = Path(path)
+                if cur_path.is_dir():
+                    self.add_folder_by_url(cur_path)
+                    UniDrive.make_directory(cur_path, cur_path.stem)
                 else:
-                    self.add_icons(path)
-
-        elif event.mimeData().hasFormat('image/x-puzzle-piece'):
-            pieceData = event.mimeData().data('image/x-puzzle-piece')
-            stream = QDataStream(pieceData, QIODevice.ReadOnly)
-            square = self.targetSquare(event.pos())
-            pixmap = QPixmap()
-            location = QPoint()
-            stream >> pixmap >> location
-            self.m_listview.pieceLocations.append(location)
-            self.m_listview.piecePixmaps.append(pixmap)
-            self.m_listview.pieceRects.append(square)
-            self.m_listview.hightlightedRect = QRect()
-            self.m_listview.update(square)
-            event.setDropAction(Qt.MoveAction)
-            event.accept()
+                    self.add_file_by_url(path)
+                    UniDrive.upload_file(cur_path)
         else:
             self.m_listview.highlightedRect = QRect()
             event.ignore()
@@ -152,16 +212,13 @@ class MainFrame(QtWidgets.QFrame):
         self.m_old_pos = event.pos()
         self.m_mouse_down = (event.button() == Qt.LeftButton)
 
-    def add_icons(self, path):
-        splits = path.split("/")
-        splitLen = len(splits)
-        #fileName = splits[splitLen - 1]
-        #ext = splitext(path)[1]
-        ext = os.path.splitext(path)[-1]
-        print(ext)
+    def add_file_by_url(self, path):
+        path = Path(path)
+        fileName = path.stem
+        ext = path.suffix
         if ext == ".pdf":
             image = QPixmap('images/pdf.png')
-        elif ext == ".png" or ext == '.jpg' or ext == '.jpeg' or ext == '.jpeg':
+        elif ext == ".png" or ext == '.jpg' or ext == '.jpeg':
             image = QPixmap('images/png.png')
         elif ext == '.zip':
             image = QPixmap('images/zip.png')
@@ -179,33 +236,81 @@ class MainFrame(QtWidgets.QFrame):
             image = QPixmap('images/docx.png')
         else:
             image = QPixmap('images/unknown.png')
-        self.model.add_piece(image, QPoint(0, 0))
-        file_info = []
-        file_info.append(path)
-        file_info.append(ext)
-        self.current_files.append(file_info)
+        row = self.model.add_piece(image, QPoint(0, 0))
+        # TODO it's for test.
+        # delete this variable
+        info = DirectoryEntry(fileName)
+        print(info)
+        self.file_in_current.append(info)
 
-    def add_folder(self, path):
+    def add_file_by_directory_entry(self, file):
+        name = file.name
+        ext = str(name).split('.')
+        ext = ext[-1]
+        if len(ext) == 1:
+            fileName = ext[0]
+        else:
+            fileName = name[:len(name) - len(ext)]
+            ext = ".unknown"
+        if ext == ".pdf":
+            image = QPixmap('images/pdf.png')
+        elif ext == ".png" or ext == '.jpg' or ext == '.jpeg':
+            image = QPixmap('images/png.png')
+        elif ext == '.zip':
+            image = QPixmap('images/zip.png')
+        elif ext == '.txt':
+            image = QPixmap('images/txt.png')
+        elif ext == '.mp4':
+            image = QPixmap('images/mp4.png')
+        elif ext == '.java':
+            image = QPixmap('images/java.png')
+        elif ext == '.xlsx' or ext == '.xls':
+            image = QPixmap('images/xlsx.png')
+        elif ext == '.py':
+            image = QPixmap('images/py.png')
+        elif ext == '.docx' or ext == '.rtf':
+            image = QPixmap('images/docx.png')
+        else:
+            image = QPixmap('images/unknown.png')
+        row = self.model.add_piece(image, QPoint(0, 0))
+        # TODO it's for test.
+        # delete this variable
+        info = DirectoryEntry(fileName)
+        self.file_in_current.append(info)
+
+    def add_folder_by_url(self, path):
         try:
-            folder_name = os.path.split(path)[-1]
-            print("In add_folder, folder name : "+folder_name+"\n")
+            path = Path(path)
+            folder_name = path.stem
             image = QPixmap('images/folder.png')
-            self.model.add_piece(image, QPoint(0, 0))
-            file_names = os.listdir(path)
-            for file in file_names:
-                sibling = os.path.join(path, file)
-                if os.path.isdir(sibling):
-                    self.add_folder(sibling)
-                else:
-                    print(path + " : not folder\n")
+            row = self.model.add_piece(image, QPoint(0, 0))
+
+            # TODO it's for test.
+            # delete this variable
+            info = DirectoryEntry(folder_name)
+            info.is_dir = True
+            self.file_in_current.append(info)
+            #TODO upload under all directory is future plan
+#            self.add_under_directory(path, next_dir)
+        except PermissionError:
+            pass
+
+    def add_folder_by_directory_entry(self, folder):
+        try:
+            image = QPixmap('images/folder.png')
+            row = self.model.add_piece(image, QPoint(0, 0))
+            self.file_in_current.append(folder)
         except PermissionError:
             pass
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
+    prjdir = pathlib.Path('.').resolve()
+    unidrive = UniDrive(prjdir)
 
     mainUI = MainFrame()
     mainUI.move(60, 0)
     mainUI.show()
+
     app.exec_()

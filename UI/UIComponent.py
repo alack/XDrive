@@ -2,6 +2,9 @@ from PyQt5 import QtWidgets, QtGui, QtCore, uic
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from pathlib import *
+from UniDrive import *
+
 
 class TitleBar(QtWidgets.QFrame):
     def __init__(self, parent=None):
@@ -139,8 +142,6 @@ class MenuBar(QtWidgets.QFrame):
         }
         """
 
-        self.rtn = None
-
         # set css and background
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Highlight)
@@ -155,8 +156,8 @@ class MenuBar(QtWidgets.QFrame):
         self.homeBtn.setIcon(QtGui.QIcon('images/home.png'))
 
         # set array button
-        self.arrangeBtn = QtWidgets.QToolButton()
-        self.arrangeBtn.setIcon(QtGui.QIcon('images/arrange.png'))
+        #self.arrangeBtn = QtWidgets.QToolButton()
+        #self.arrangeBtn.setIcon(QtGui.QIcon('images/arrange.png'))
 
         # set add folder button
         self.addFolderBtn = QtWidgets.QToolButton()
@@ -182,19 +183,23 @@ class MenuBar(QtWidgets.QFrame):
         self.layout.addWidget(self.progressBar)
         self.layout.addWidget(self.homeBtn)
         self.layout.addWidget(self.addFolderBtn)
-        self.layout.addWidget(self.arrangeBtn)
+       # self.layout.addWidget(self.arrangeBtn)
         self.layout.addWidget(self.addCloudBtn)
         self.layout.addWidget(self.removeCloudBtn)
-#        self.layout.addWidget(self.settingBtn)
 
         # add action
-        self.arrangeBtn.clicked.connect(self.directory_arrange_action)
+        #self.arrangeBtn.clicked.connect(self.directory_arrange_action)
+        self.addFolderBtn.clicked.connect(self.add_folder_btn_action)
 
         # set alignment
         self.layout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         # set title bar size
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.maxNormal = False
+
+    def add_folder_btn_action(self):
+        image = QPixmap('images/folder.png')
+        self.parent().model.add_piece(image, QPoint(0, 0))
 
     def add_menu_setting(self):
         self.addMenu = QtWidgets.QMenu()
@@ -211,7 +216,7 @@ class MenuBar(QtWidgets.QFrame):
         self.removeMenu = QtWidgets.QMenu()
 
     def remove_menu_add_item(self, item):
-        self.parent().drive_action_list.append(QAction(item[0], self))
+        self.parent().drive_action_list.append(QAction(str(item[0]+"/"+item[1]), self))
         self.parent().drive_action_list[-1].triggered.connect(
             lambda x: self.drive_remove_each_clicked(item))
         self.removeMenu.addAction(self.parent().drive_action_list[-1])
@@ -219,13 +224,15 @@ class MenuBar(QtWidgets.QFrame):
     def drive_remove_each_clicked(self, item):
         for i in range(len(self.parent().connected_drive_info)):
             if item == self.parent().connected_drive_info[i]:
-                print(str(item) + " is deleting")
+                self.parent().debug.textEdit.appendPlainText(item[0]+"/"+item[1] + " is deleting")
                 self.removeMenu.removeAction(self.parent().drive_action_list[i])
                 del self.parent().drive_action_list[i]
                 return
 
+    """
     def directory_arrange_action(self):
         print("arrange button clicked\n")
+    """
 
     # progressbar's color, percent
     def set_progressbar(self, value):
@@ -251,7 +258,7 @@ class MenuBar(QtWidgets.QFrame):
                 text-align: center;
             }
             QProgressBar::chunk {
-                background-color: #orange; 
+                background-color: #FFCC00; 
                 width: 20px;
             }""")
         else:
@@ -263,7 +270,7 @@ class MenuBar(QtWidgets.QFrame):
                 text-align: center;
             }
             QProgressBar::chunk {
-                background-color: #05B8CC; 
+                background-color: #99FF66; 
                 width: 20px;
             }""")
 
@@ -291,17 +298,12 @@ class DirectoryBar(QtWidgets.QDialog):
         self.hbox = QtWidgets.QHBoxLayout()
         self.setLayout(self.hbox)
         self.hbox.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.set_home_button()
-        self.add_under_directory_button("1")
-        self.add_under_directory_button("2")
-        self.add_under_directory_button("3")
-        self.add_under_directory_button("4")
-        self.add_under_directory_button("5")
+        self.set_root_button()
 
-    def set_home_button(self):
+    def set_root_button(self):
         for x in self.directoryButtonGroup.buttons():
             self.del_under_directory_button(x)
-        self.add_under_directory_button("home")
+        self.add_under_directory_button("/")
 
     def add_under_directory_button(self, dirName):
         button = QToolButton()
@@ -379,8 +381,7 @@ class PiecesModel(QAbstractListModel):
             return None
 
         if role == Qt.DecorationRole:
-            return QIcon(self.pixmaps[index.row()].scaled(
-                60, 60, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            return QIcon(self.pixmaps[index.row()].scaled(60, 60, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
         if role == Qt.UserRole:
             return self.pixmaps[index.row()]
@@ -396,6 +397,7 @@ class PiecesModel(QAbstractListModel):
         self.pixmaps.insert(row, pixmap)
         self.locations.insert(row, location)
         self.endInsertRows()
+        return row
 
     def flags(self, index):
         if index.isValid():
@@ -430,7 +432,6 @@ class PiecesModel(QAbstractListModel):
         encodedData = QByteArray()
 
         stream = QDataStream(encodedData, QIODevice.WriteOnly)
-
         for index in indexes:
             if index.isValid():
                 pixmap = QPixmap(self.data(index, Qt.UserRole))
@@ -518,6 +519,14 @@ class DirectoryView(QListView):
 
     def targetSquare(self, position):
         return QRect(position.x() // 60 * 60, position.y() // 60 * 60, 60, 60)
+
+    def set_directory(self, files):
+        self.clear()
+        for file in files:
+            if file.is_dir:
+                self.parent().add_folder_by_directory_entry(file)
+            else:
+                self.parent().add_file_by_directory_entry(file)
 
 
 class DebugPanel(QFrame):
