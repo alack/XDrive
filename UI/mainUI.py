@@ -1,4 +1,3 @@
-import collections
 from exceptions import *
 import os
 import pathlib
@@ -97,10 +96,8 @@ class MainFrame(QtWidgets.QFrame):
 
     def homebtn_clicked(self):
         self.m_directoryBar.set_root_button()
-        files = UniDrive.get_list('/')
-        # TODO need to corret
-        temp_files = []
-        self.m_listview.set_directory(temp_files)
+        files = unidrive.get_list("/")
+        self.m_listview.set_directory(files)
         self.m_directoryBar.set_root_button()
 
     def add_drive_menubar_action(self):
@@ -186,7 +183,6 @@ class MainFrame(QtWidgets.QFrame):
                 status = str(upload_list[0].toLocalFile())
                 self.m_statusBar.set_status_label(str(upload_list[0].toLocalFile())+" is uploading")
             for url in upload_list:
-                print("file url : "+str(url.toLocalFile())+"\n")
                 path = urlparse(url.toLocalFile()).path
                 cur_path = Path(path)
                 if cur_path.is_dir():
@@ -194,7 +190,20 @@ class MainFrame(QtWidgets.QFrame):
                     UniDrive.make_directory(cur_path, cur_path.stem)
                 else:
                     self.add_file_by_url(path)
-                    UniDrive.upload_file(cur_path)
+                    if cur_path.is_file() is False:
+                        self.m_statusBar.set_status_fail()
+                        self.m_statusBar.statusLabel.setText('file does not exists')
+                        continue
+                    with open(cur_path, 'rb') as src_file:
+                        src_data = src_file.read()
+                    try:
+                        unidrive.upload_file(path, src_data)
+                    except BaseStoreException as e:
+                        self.m_statusBar.set_status_fail()
+                        self.m_statusBar.statusLabel.setText(cur_path+' upload error')
+                    else:
+                        self.m_statusBar.set_status_ok()
+                        self.m_statusBar.statusLabel.setText('Upload Done')
         else:
             self.m_listview.highlightedRect = QRect()
             event.ignore()
