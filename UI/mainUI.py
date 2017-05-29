@@ -45,6 +45,8 @@ class MainFrame(QtWidgets.QFrame):
         self.model = PiecesModel()
         self.m_listview.setModel(self.model)
         self.m_directoryBar = DirectoryBar()
+        self.m_directoryBar.directoryButtonGroup.buttonClicked[QAbstractButton].connect(
+            self.go_specific_directory_button)
 
         vbox = QtWidgets.QVBoxLayout(self)
         vbox.addWidget(self.m_titleBar)
@@ -54,11 +56,29 @@ class MainFrame(QtWidgets.QFrame):
         vbox.addWidget(self.m_statusBar)
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
+
         self.add_drive_menubar_action()
         self.load_data_from_store_list()
-        self.debug = DebugPanel()
-        self.debug.move(60, 600)
-        self.debug.show()
+        self.load_root_files()
+
+    def go_specific_directory_button(self, button):
+        flag = 0
+        clicked_path = ""
+        next_dir = ""
+        for i, x in enumerate(self.m_directoryBar.directoryButtonGroup.buttons()):
+            if flag == 1:
+                x.deleteLater()
+                self.m_directoryBar.directoryButtonGroup.removeButton(x)
+            else:
+                if i <= 1:
+                    clicked_path += x.text()
+                else:
+                    clicked_path += "/"+x.text()
+            if x == button:
+                flag = 1
+                next_dir = x.text()
+        self.current_dir = clicked_path
+        self.dir_selected(next_dir, True)
 
     def load_data_from_store_list(self):
         # need to get saved store list
@@ -75,30 +95,38 @@ class MainFrame(QtWidgets.QFrame):
             self.connected_drive_info.append(item)
             self.m_menuBar.remove_menu_add_item(item)
 
+    def dir_selected(self, name, isFromDirectoryBar):
+        nextlist = unidrive.get_list(self.current_dir)
+        self.file_in_current = nextlist[0:]
+        self.model.clear()
+        if isFromDirectoryBar == False:
+            self.m_directoryBar.add_under_directory_button(name)
+        self.m_listview.clear()
+        if len(nextlist) != 0:
+            self.m_listview.set_directory(nextlist)
+
     def listview_double_clicked(self, idx):
-        print("listview_double_clicked")
-        """
         clicked_file = self.file_in_current[idx.row()]
-        print(clicked_file)
-        # TODO if clicked file is directory? go to under directory : ignore
         if clicked_file.is_dir:
-            print("folder is clicked")
-            temp_dir = [DirectoryEntry("/asdf/bbb", True) for i in range(5)]
-            temp_dir.append(DirectoryEntry("asdf", False))
-            # TODO get file list of next directory
-            self.m_listview.set_directory(temp_dir) #UniDrive.get_list(checked_file)
-            # TODO set directory bar
-            # TODO set status bar
-        """
+            if self.current_dir == "/":
+                self.current_dir = self.current_dir + clicked_file.name
+            else:
+                self.current_dir = self.current_dir + "/" + clicked_file.name
+            self.dir_selected(clicked_file.name, False)
+        # TODO when user do doubleClick file? downlaod : not
+        else:
+            print("file clicked, " + self.current_dir+"/"+clicked_file.name)
+            print(unidrive.download_file(self.current_dir+"/"+clicked_file.name))
 
     def title_bar(self):
         return self.m_titleBar
 
     def homebtn_clicked(self):
-        self.m_directoryBar.set_root_button()
-        files = unidrive.get_list("/")
-        self.m_listview.set_directory(files)
-        self.m_directoryBar.set_root_button()
+        self.load_root_files()
+
+    def load_root_files(self):
+        self.current_dir = "/"
+        self.dir_selected("/", False)
 
     def add_drive_menubar_action(self):
         # set trigger to action

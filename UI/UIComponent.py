@@ -224,7 +224,6 @@ class MenuBar(QtWidgets.QFrame):
     def drive_remove_each_clicked(self, item):
         for i in range(len(self.parent().connected_drive_info)):
             if item == self.parent().connected_drive_info[i]:
-                self.parent().debug.textEdit.appendPlainText(item[0]+"/"+item[1] + " is deleting")
                 self.removeMenu.removeAction(self.parent().drive_action_list[i])
                 del self.parent().drive_action_list[i]
                 return
@@ -293,16 +292,15 @@ class DirectoryBar(QtWidgets.QDialog):
         self.setStyleSheet(css)
 
         self.directoryButtonGroup = QButtonGroup()
-        self.directoryButtonGroup.buttonClicked[QAbstractButton].connect(self.on_directory_button_clicked)
         # set horizontal box
         self.hbox = QtWidgets.QHBoxLayout()
         self.setLayout(self.hbox)
         self.hbox.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.set_root_button()
 
     def set_root_button(self):
         for x in self.directoryButtonGroup.buttons():
-            self.del_under_directory_button(x)
+            x.deleteLater()
+            self.directoryButtonGroup.removeButton(x)
         self.add_under_directory_button("/")
 
     def add_under_directory_button(self, dirName):
@@ -310,21 +308,6 @@ class DirectoryBar(QtWidgets.QDialog):
         button.setText(dirName)
         self.directoryButtonGroup.addButton(button)
         self.hbox.addWidget(button)
-
-    def del_under_directory_button(self, button):
-        button.deleteLater()
-        self.directoryButtonGroup.removeButton(button)
-
-    def go_specific_directory_button(self, button):
-        flag = 0
-        for x in self.directoryButtonGroup.buttons():
-            if flag == 1:
-                self.del_under_directory_button(x)
-            if x == button:
-                flag = 1
-
-    def on_directory_button_clicked(self, button):
-        self.go_specific_directory_button(button)
 
 
 class StatusBar(QtWidgets.QDialog):
@@ -374,6 +357,10 @@ class PiecesModel(QAbstractListModel):
     def __init__(self, parent=None):
         super(PiecesModel, self).__init__(parent)
         self.locations = []
+        self.pixmaps = []
+
+    def clear(self):
+        self.locations= []
         self.pixmaps = []
 
     def data(self, index, role=Qt.DisplayRole):
@@ -517,7 +504,7 @@ class DirectoryView(QListView):
         self.iconNames = []
         self.highlightedRect = QRect()
 
-    def targetSquare(self, position):
+    def target_square(self, position):
         return QRect(position.x() // 60 * 60, position.y() // 60 * 60, 60, 60)
 
     def set_directory(self, files):
