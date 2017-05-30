@@ -115,8 +115,10 @@ class MainFrame(QtWidgets.QFrame):
             self.dir_selected(clicked_file.name, False)
         # TODO when user do doubleClick file? downlaod : not
         else:
+            # TODO edit as download specific directory
             print("file clicked, " + self.current_dir+"/"+clicked_file.name)
-            print(unidrive.download_file(self.current_dir+"/"+clicked_file.name))
+            downed_data = unidrive.download_file(self.current_dir+"/"+clicked_file.name)
+            print(downed_data)
 
     def title_bar(self):
         return self.m_titleBar
@@ -200,10 +202,6 @@ class MainFrame(QtWidgets.QFrame):
         if event.mimeData().hasUrls:
             upload_list = event.mimeData().urls()
             count = len(upload_list)
-            self.totalStoragePercent += count
-            if self.totalStoragePercent > 100:
-                self.totalStoragePercent = 100
-            self.m_menuBar.set_progressbar(self.totalStoragePercent)
             if count >= 2:
                 status = str(count)+" files are uploading"
                 self.m_statusBar.set_status_label(status)
@@ -214,8 +212,8 @@ class MainFrame(QtWidgets.QFrame):
                 path = urlparse(url.toLocalFile()).path
                 cur_path = Path(path)
                 if cur_path.is_dir():
+                    unidrive.make_directory(self.current_dir, cur_path.stem)
                     self.add_folder_by_url(cur_path)
-                    UniDrive.make_directory(cur_path, cur_path.stem)
                 else:
                     self.add_file_by_url(path)
                     if cur_path.is_file() is False:
@@ -225,7 +223,8 @@ class MainFrame(QtWidgets.QFrame):
                     with open(cur_path, 'rb') as src_file:
                         src_data = src_file.read()
                     try:
-                        unidrive.upload_file(path, src_data)
+                        unidrive.upload_file(self.current_dir+cur_path.name, src_data)
+
                     except BaseStoreException as e:
                         self.m_statusBar.set_status_fail()
                         self.m_statusBar.statusLabel.setText(cur_path+' upload error')
@@ -249,66 +248,45 @@ class MainFrame(QtWidgets.QFrame):
         self.m_old_pos = event.pos()
         self.m_mouse_down = (event.button() == Qt.LeftButton)
 
+    def ext_to_QPixmap(self, ext):
+        if ext == ".pdf" or ext == ".pptx":
+            image = QPixmap('images/pdf.png')
+        elif ext == ".png" or ext == '.jpg' or ext == '.jpeg':
+            image = QPixmap('images/png.png')
+        elif ext == '.zip':
+            image = QPixmap('images/zip.png')
+        elif ext == '.txt':
+            image = QPixmap('images/txt.png')
+        elif ext == '.mp4':
+            image = QPixmap('images/mp4.png')
+        elif ext == '.java':
+            image = QPixmap('images/java.png')
+        elif ext == '.xlsx' or ext == '.xls':
+            image = QPixmap('images/xlsx.png')
+        elif ext == '.py':
+            image = QPixmap('images/py.png')
+        elif ext == '.docx' or ext == '.rtf':
+            image = QPixmap('images/docx.png')
+        else:
+            image = QPixmap('images/unknown.png')
+        return image
+
     def add_file_by_url(self, path):
         path = Path(path)
         fileName = path.stem
         ext = path.suffix
-        if ext == ".pdf":
-            image = QPixmap('images/pdf.png')
-        elif ext == ".png" or ext == '.jpg' or ext == '.jpeg':
-            image = QPixmap('images/png.png')
-        elif ext == '.zip':
-            image = QPixmap('images/zip.png')
-        elif ext == '.txt':
-            image = QPixmap('images/txt.png')
-        elif ext == '.mp4':
-            image = QPixmap('images/mp4.png')
-        elif ext == '.java':
-            image = QPixmap('images/java.png')
-        elif ext == '.xlsx' or ext == '.xls':
-            image = QPixmap('images/xlsx.png')
-        elif ext == '.py':
-            image = QPixmap('images/py.png')
-        elif ext == '.docx' or ext == '.rtf':
-            image = QPixmap('images/docx.png')
-        else:
-            image = QPixmap('images/unknown.png')
+        image = self.ext_to_QPixmap(ext)
         row = self.model.add_piece(image, QPoint(0, 0))
         # TODO it's for test.
         # delete this variable
         info = DirectoryEntry(fileName)
-        print(info)
         self.file_in_current.append(info)
 
     def add_file_by_directory_entry(self, file):
-        name = file.name
-        ext = str(name).split('.')
-        ext = ext[-1]
-        if len(ext) == 1:
-            fileName = ext[0]
-        else:
-            fileName = name[:len(name) - len(ext)]
-            ext = ".unknown"
-        if ext == ".pdf":
-            image = QPixmap('images/pdf.png')
-        elif ext == ".png" or ext == '.jpg' or ext == '.jpeg':
-            image = QPixmap('images/png.png')
-        elif ext == '.zip':
-            image = QPixmap('images/zip.png')
-        elif ext == '.txt':
-            image = QPixmap('images/txt.png')
-        elif ext == '.mp4':
-            image = QPixmap('images/mp4.png')
-        elif ext == '.java':
-            image = QPixmap('images/java.png')
-        elif ext == '.xlsx' or ext == '.xls':
-            image = QPixmap('images/xlsx.png')
-        elif ext == '.py':
-            image = QPixmap('images/py.png')
-        elif ext == '.docx' or ext == '.rtf':
-            image = QPixmap('images/docx.png')
-        else:
-            image = QPixmap('images/unknown.png')
+        path = Path(file.name)
+        fileName = path.stem
+        ext = path.suffix
+        image = self.ext_to_QPixmap(ext)
         row = self.model.add_piece(image, QPoint(0, 0))
         # TODO it's for test.
         # delete this variable
