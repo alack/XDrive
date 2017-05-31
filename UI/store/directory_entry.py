@@ -30,6 +30,10 @@ class DirectoryEntry:
         else:
             self.__is_dir = False
 
+    @name.setter
+    def name(self, val):
+        self.__node_name = val
+
     @property
     def is_chunk(self):
         return self.__is_chunk
