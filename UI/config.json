@@ -1,6 +1,6 @@
 {
-    "google_client_id": "922938236157-5dfa1mp0g5tgh48b4uh9ue19csgin6ah.apps.googleusercontent.com",
-    "google_client_secret": "DYEW6YvJ0CK2Qe-B50GggWqT",
-    "dropbox_client_id": "cep4re0edd3vsmp",
-    "dropbox_client_secret": "7029x3nth5mykw9"
+    "google_client_id": "your-google-client-id",
+    "google_client_secret": "your-google-client-secret",
+    "dropbox_client_id": "your-dropbox-client-id",
+    "dropbox_client_secret": "your-dropbox-client-secret"
 }

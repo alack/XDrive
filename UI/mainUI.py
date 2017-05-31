@@ -42,6 +42,7 @@ class MainFrame(QtWidgets.QFrame):
         self.m_statusBar = StatusBar()
         self.m_listview = DirectoryView()
         self.m_listview.doubleClicked.connect(self.listview_double_clicked)
+
         self.model = PiecesModel()
         self.m_listview.setModel(self.model)
         self.m_directoryBar = DirectoryBar()
@@ -115,10 +116,16 @@ class MainFrame(QtWidgets.QFrame):
             self.dir_selected(clicked_file.name, False)
         # TODO when user do doubleClick file? downlaod : not
         else:
-            # TODO edit as download specific directory
+            pass
+            """
+            # TODO : edit as download specific directory
             print("file clicked, " + self.current_dir+"/"+clicked_file.name)
             downed_data = unidrive.download_file(self.current_dir+"/"+clicked_file.name)
             print(downed_data)
+            """
+
+    def listview_key_pressed(self):
+        print("key pressed")
 
     def title_bar(self):
         return self.m_titleBar
@@ -276,7 +283,8 @@ class MainFrame(QtWidgets.QFrame):
         fileName = path.stem
         ext = path.suffix
         image = self.ext_to_QPixmap(ext)
-        row = self.model.add_piece(image, QPoint(0, 0))
+        row = len(self.model.pixmaps)
+        row = self.model.add_piece(image, QPoint(row, 0), fileName)
         # TODO it's for test.
         # delete this variable
         info = DirectoryEntry(fileName)
@@ -287,7 +295,7 @@ class MainFrame(QtWidgets.QFrame):
         fileName = path.stem
         ext = path.suffix
         image = self.ext_to_QPixmap(ext)
-        row = self.model.add_piece(image, QPoint(0, 0))
+        row = self.model.add_piece(image, QPoint(0, 0), fileName)
         # TODO it's for test.
         # delete this variable
         info = DirectoryEntry(fileName)
@@ -313,7 +321,7 @@ class MainFrame(QtWidgets.QFrame):
     def add_folder_by_directory_entry(self, folder):
         try:
             image = QPixmap('images/folder.png')
-            row = self.model.add_piece(image, QPoint(0, 0))
+            row = self.model.add_piece(image, QPoint(0, 0), folder.name)
             self.file_in_current.append(folder)
         except PermissionError:
             pass

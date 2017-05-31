@@ -199,7 +199,7 @@ class MenuBar(QtWidgets.QFrame):
 
     def add_folder_btn_action(self):
         image = QPixmap('images/folder.png')
-        self.parent().model.add_piece(image, QPoint(0, 0))
+        self.parent().model.add_piece(image, QPoint(0, 0), "Null")
 
     def add_menu_setting(self):
         self.addMenu = QtWidgets.QMenu()
@@ -358,40 +358,56 @@ class PiecesModel(QAbstractListModel):
         super(PiecesModel, self).__init__(parent)
         self.locations = []
         self.pixmaps = []
+        self.fileNames = []
 
     def clear(self):
-        self.locations= []
+        self.locations = []
         self.pixmaps = []
+        self.fileNames = []
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return None
-
+        if not 0 <= index.row() < self.rowCount():
+            return None
+        row = index.row()
+        if role == Qt.DisplayRole:
+            return self.fileNames[row]
         if role == Qt.DecorationRole:
-            return QIcon(self.pixmaps[index.row()].scaled(60, 60, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-
+            return QIcon(self.pixmaps[index.row()].scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        if role == Qt.EditRole:
+            return self.fileNames[index.row()]
+        if role == Qt.ToolTipRole:
+            return "Press F2 to change File Name"
+        if role == Qt.ForegroundRole:
+            return QBrush(QColor(0, 0, 0, 127))
         if role == Qt.UserRole:
             return self.pixmaps[index.row()]
-
         if role == Qt.UserRole + 1:
             return self.locations[index.row()]
-
         return None
 
-    def add_piece(self, pixmap, location):
+    def setData(self, index, value, role=Qt.EditRole):
+        if role == Qt.EditRole:
+            value_str = value
+            self.fileNames[index.row()] = value_str
+            self.dataChanged.emit(index, index)
+            return True
+
+    def add_piece(self, pixmap, location, name):
         row = len(self.pixmaps)
         self.beginInsertRows(QModelIndex(), row, row)
         self.pixmaps.insert(row, pixmap)
         self.locations.insert(row, location)
+        self.fileNames.insert(row, name)
         self.endInsertRows()
         return row
 
     def flags(self, index):
+        flag = super(PiecesModel, self).flags(index)
         if index.isValid():
             return (Qt.ItemIsEnabled | Qt.ItemIsSelectable |
-                    Qt.ItemIsDragEnabled)
-
-        return Qt.ItemIsDropEnabled
+                    Qt.ItemIsDragEnabled | Qt.ItemIsEditable | Qt.ItemIsDropEnabled)
 
     def removeRows(self, row, count, parent):
         if parent.isValid():
@@ -407,7 +423,7 @@ class PiecesModel(QAbstractListModel):
 
         del self.pixmaps[beginRow:endRow + 1]
         del self.locations[beginRow:endRow + 1]
-
+        del self.fileNames[beginRow:endRow + 1]
         self.endRemoveRows()
         return True
 
@@ -452,6 +468,7 @@ class PiecesModel(QAbstractListModel):
         while not stream.atEnd():
             pixmap = QPixmap()
             location = QPoint()
+            name = ""
             stream >> pixmap >> location
 
             self.beginInsertRows(QModelIndex(), endRow, endRow)
@@ -463,11 +480,8 @@ class PiecesModel(QAbstractListModel):
 
         return True
 
-    def rowCount(self, parent):
-        if parent.isValid():
-            return 0
-        else:
-            return len(self.pixmaps)
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.pixmaps)
 
     def supportedDropActions(self):
         return Qt.CopyAction | Qt.MoveAction
@@ -486,13 +500,12 @@ class DirectoryView(QListView):
         """
         self.setStyleSheet(css)
         self.setViewMode(QListView.IconMode)
-        self.setIconSize(QSize(40, 40))
-        self.setGridSize(QSize(60, 60))
+        self.setIconSize(QSize(80, 80))
+        self.setGridSize(QSize(100, 100))
         self.setMovement(QListView.Snap)
         self.piecePixmaps = []
         self.pieceRects = []
         self.pieceLocations = []
-        self.iconNames = []
         self.highlightedRect = QRect()
         self.setAcceptDrops(True)
         self.setMinimumSize(400, 400)
@@ -501,11 +514,10 @@ class DirectoryView(QListView):
         self.pieceLocations = []
         self.piecePixmaps = []
         self.pieceRects = []
-        self.iconNames = []
         self.highlightedRect = QRect()
 
     def target_square(self, position):
-        return QRect(position.x() // 60 * 60, position.y() // 60 * 60, 60, 60)
+        return QRect(position.x() // 100 * 100, position.y() // 100 * 100, 100, 100)
 
     def set_directory(self, files):
         self.clear()
@@ -514,6 +526,10 @@ class DirectoryView(QListView):
                 self.parent().add_folder_by_directory_entry(file)
             else:
                 self.parent().add_file_by_directory_entry(file)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F2:
+            print("need to change name")
 
 
 class DebugPanel(QFrame):
