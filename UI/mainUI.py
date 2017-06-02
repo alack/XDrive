@@ -18,6 +18,7 @@ class MainFrame(QtWidgets.QFrame):
     drive_action_list = []
     file_in_current = []
     current_dir = "/"
+    download_dir = ""
     totalStoragePercent = 0
 
     def __init__(self, parent=None):
@@ -40,6 +41,7 @@ class MainFrame(QtWidgets.QFrame):
         self.m_titleBar = TitleBar()
         self.m_menuBar = MenuBar()
         self.m_menuBar.addFolderBtn.clicked.connect(self.add_folder_btn_action)
+        self.m_menuBar.folderOpenBtn.clicked.connect(self.folder_open_btn_action)
 
         self.m_statusBar = StatusBar()
         self.m_listview = DirectoryView()
@@ -67,6 +69,10 @@ class MainFrame(QtWidgets.QFrame):
         self.add_drive_menubar_action()
         self.load_data_from_store_list()
         self.load_root_files()
+
+    def folder_open_btn_action(self):
+        folder = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        self.download_dir = folder
 
     def add_folder_btn_action(self):
         image = QPixmap('images/folder.png')
@@ -132,21 +138,26 @@ class MainFrame(QtWidgets.QFrame):
 
     def listview_double_clicked(self, idx):
         clicked_file = self.model.files[idx.row()]
+        path = Path(clicked_file.name)
+        fileName = path.stem
+        ext = path.suffix
         if clicked_file.is_dir:
-            if self.current_dir == "/":
-                self.current_dir = self.current_dir + clicked_file.name
-            else:
-                self.current_dir = self.current_dir + "/" + clicked_file.name
+            self.current_dir = self.current_dir + clicked_file.name
             self.dir_selected(clicked_file.name, False)
         # TODO when user do doubleClick file? downlaod : not
         else:
-            pass
-            """
-            # TODO : edit as download specific directory
-            print("file clicked, " + self.current_dir+"/"+clicked_file.name)
-            downed_data = unidrive.download_file(self.current_dir+"/"+clicked_file.name)
-            print(downed_data)
-            """
+            if self.download_dir == "":
+                self.m_statusBar.set_status_fail("Need to set download directory")
+            elif os.path.exists(self.download_dir) is False:
+                self.m_statusBar.set_status_fail("Download directory is not exists")
+            else:
+                downed_data = unidrive.download_file(self.current_dir+clicked_file.name)
+                print(downed_data)
+                # TODO : if file is existed ? "new" + filename
+                with open(self.download_dir+"/"+fileName+ext, 'wb') as outfile:
+                    outfile.write(downed_data)
+                self.m_statusBar.set_status_ok("Download Done. "+self.download_dir+"/"+fileName+ext)
+
 
     def title_bar(self):
         return self.m_titleBar
@@ -172,24 +183,21 @@ class MainFrame(QtWidgets.QFrame):
             webbrowser.open_new(auth_url)
             res = input('response url for test-googledrive :')
             if unidrive.activate_store('test-googledrive', res):
-                self.m_statusBar.set_status_ok()
-                self.m_statusBar.statusLabel.setText('success test-googledrive')
+                self.m_statusBar.set_status_ok("Success test-googledrive")
                 recent_store = unidrive.get_recent_store()
                 item = ["Google", recent_store['name']]
                 self.connected_drive_info.append(item)
                 self.m_menuBar.remove_menu_add_item(item)
             else:
-                self.m_statusBar.set_status_fail()
-                self.m_statusBar.statusLabel.setText('fail test-googledrive')
+                self.m_statusBar.set_status_fail("Fail test-googledrive")
         except Exception:
-            self.m_statusBar.set_status_fail()
-            self.m_statusBar.statusLabel.setText('test-googledrive is already registered')
+            self.m_statusBar.set_status_fail("tesg-googledrive is alread registered")
 
     def box_clicked(self):
         # TODO need to write code about box get auth_url
         # TODO delete Item from
         item = ["box", "highalps", "z9123rnaz00cxv"]
-        self.m_statusBar.set_status_label("box Added, ("+item[0]+", "+item[1]+", "+item[2]+")")
+        self.m_statusBar.set_status_ok("box Added, ("+item[0]+", "+item[1]+", "+item[2]+")")
         # TODO delete Item to
 
     def dropbox_clicked(self):
@@ -199,18 +207,15 @@ class MainFrame(QtWidgets.QFrame):
             webbrowser.open_new(auth_url)
             res = input('response url for test-dropbox :')
             if unidrive.activate_store('test-dropbox', res):
-                self.m_statusBar.set_status_ok()
-                self.m_statusBar.statusLabel.setText('success test-dropbox')
+                self.m_statusBar.set_status_ok("Success test-dropbox")
                 recent_store = unidrive.get_recent_store()
                 item = ["Google", recent_store['name']]
                 self.connected_drive_info.append(item)
                 self.m_menuBar.remove_menu_add_item(item)
             else:
-                self.m_statusBar.set_status_fail()
-                self.m_statusBar.statusLabel.setText('fail test-dropbox')
+                self.m_statusBar.set_status_fail("Fail test-dropbox")
         except Exception:
-            self.m_statusBar.set_status_fail()
-            self.m_statusBar.statusLabel.setText('test-googledrive is already registered')
+            self.m_statusBar.set_status_fail("Test-googledrive is already registered")
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls:
@@ -232,10 +237,10 @@ class MainFrame(QtWidgets.QFrame):
             count = len(upload_list)
             if count >= 2:
                 status = str(count)+" files are uploading"
-                self.m_statusBar.set_status_label(status)
+                self.m_statusBar.set_status_ok(status)
             elif count == 1:
                 status = str(upload_list[0].toLocalFile())
-                self.m_statusBar.set_status_label(str(upload_list[0].toLocalFile())+" is uploading")
+                self.m_statusBar.set_status_ok(str(upload_list[0].toLocalFile())+" is uploading")
             for url in upload_list:
                 path = urlparse(url.toLocalFile()).path
                 cur_path = Path(path)
@@ -245,8 +250,7 @@ class MainFrame(QtWidgets.QFrame):
                 else:
                     self.add_file_by_url(path)
                     if cur_path.is_file() is False:
-                        self.m_statusBar.set_status_fail()
-                        self.m_statusBar.statusLabel.setText('file does not exists')
+                        self.m_statusBar.set_status_fail("file does not exists")
                         continue
                     with open(cur_path, 'rb') as src_file:
                         src_data = src_file.read()
@@ -254,11 +258,9 @@ class MainFrame(QtWidgets.QFrame):
                         unidrive.upload_file(self.current_dir+cur_path.name, src_data)
 
                     except BaseStoreException as e:
-                        self.m_statusBar.set_status_fail()
-                        self.m_statusBar.statusLabel.setText(cur_path+' upload error')
+                        self.m_statusBar.set_status_fail(cur_path+" upload error")
                     else:
-                        self.m_statusBar.set_status_ok()
-                        self.m_statusBar.statusLabel.setText('Upload Done')
+                        self.m_statusBar.set_status_ok("Upload Done.")
         else:
             self.m_listview.highlightedRect = QRect()
             event.ignore()
@@ -305,7 +307,7 @@ class MainFrame(QtWidgets.QFrame):
         ext = path.suffix
         image = self.ext_to_QPixmap(ext)
         last_idx = len(self.model.files)
-        row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(fileName, False))
+        row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(fileName+ext, False))
         # TODO it's for test.
         # delete this variable
         info = DirectoryEntry(fileName)
@@ -317,7 +319,7 @@ class MainFrame(QtWidgets.QFrame):
         ext = path.suffix
         image = self.ext_to_QPixmap(ext)
         last_idx = len(self.model.files)
-        row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(fileName, False))
+        row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(fileName+ext, False))
         # TODO it's for test.
         # delete this variable
         info = DirectoryEntry(fileName)

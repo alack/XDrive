@@ -157,6 +157,10 @@ class MenuBar(QtWidgets.QFrame):
         #self.homeBtn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         #self.homeBtn.setText("home!")
 
+        # set folder open btn
+        self.folderOpenBtn = QtWidgets.QToolButton()
+        self.folderOpenBtn.setIcon(QtGui.QIcon('images/folder_open.png'))
+
         # set add folder button
         self.addFolderBtn = QtWidgets.QToolButton()
         self.addFolderBtn.setIcon(QtGui.QIcon('images/add_folder_blue.png'))
@@ -180,6 +184,7 @@ class MenuBar(QtWidgets.QFrame):
         self.layout = QtWidgets.QHBoxLayout(self)
         self.layout.addWidget(self.progressBar)
         self.layout.addWidget(self.homeBtn)
+        self.layout.addWidget(self.folderOpenBtn)
         self.layout.addWidget(self.addFolderBtn)
         self.layout.addWidget(self.addCloudBtn)
         self.layout.addWidget(self.removeCloudBtn)
@@ -332,14 +337,17 @@ class StatusBar(QtWidgets.QDialog):
     def set_status_label(self, msg):
         self.statusLabel.setText(msg)
 
-    def set_status_ok(self):
+    def set_status_ok(self, msg):
         self.statusIconBtn.setIcon(QIcon('images/status_ok.png'))
+        self.statusLabel.setText(msg)
 
-    def set_status_wait(self):
+    def set_status_wait(self, msg):
         self.statusIconBtn.setIcon(QIcon('images/status_wait.png'))
+        self.statusLabel.setText(msg)
 
-    def set_status_fail(self):
+    def set_status_fail(self, msg):
         self.statusIconBtn.setIcon(QIcon('images/status_fail.png'))
+        self.statusLabel.setText(msg)
 
 
 class PiecesModel(QAbstractListModel):
