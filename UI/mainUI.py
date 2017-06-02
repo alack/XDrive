@@ -39,9 +39,15 @@ class MainFrame(QtWidgets.QFrame):
 
         self.m_titleBar = TitleBar()
         self.m_menuBar = MenuBar()
+        self.m_menuBar.addFolderBtn.clicked.connect(self.add_folder_btn_action)
+
         self.m_statusBar = StatusBar()
         self.m_listview = DirectoryView()
         self.m_listview.doubleClicked.connect(self.listview_double_clicked)
+        self.m_listview.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.m_listview.setDragDropMode(QAbstractItemView.DragDrop)
+
+        self.m_listview.setDragDropOverwriteMode(True)
 
         self.model = PiecesModel()
         self.m_listview.setModel(self.model)
@@ -61,6 +67,21 @@ class MainFrame(QtWidgets.QFrame):
         self.add_drive_menubar_action()
         self.load_data_from_store_list()
         self.load_root_files()
+
+    def add_folder_btn_action(self):
+        image = QPixmap('images/folder.png')
+        last_idx = len(self.model.files)
+        newFolderName = "newFolder"
+        num = 1
+        while True:
+            for item in self.model.files:
+                if newFolderName+str(num) == item:
+                    num += 1
+                    continue
+            break
+        print("name :",self.current_dir+"||"+newFolderName)
+        unidrive.make_directory(self.current_dir, newFolderName)
+        self.add_folder_by_directory_entry(DirectoryEntry(newFolderName, True))
 
     def go_specific_directory_button(self, button):
         flag = 0
@@ -101,13 +122,16 @@ class MainFrame(QtWidgets.QFrame):
         self.file_in_current = nextlist[0:]
         self.model.clear()
         if isFromDirectoryBar == False:
-            self.m_directoryBar.add_under_directory_button(name)
+            if self.current_dir == '/':
+                self.m_directoryBar.set_root_button()
+            else:
+                self.m_directoryBar.add_under_directory_button(name)
         self.m_listview.clear()
         if len(nextlist) != 0:
             self.m_listview.set_directory(nextlist)
 
     def listview_double_clicked(self, idx):
-        clicked_file = self.file_in_current[idx.row()]
+        clicked_file = self.model.files[idx.row()]
         if clicked_file.is_dir:
             if self.current_dir == "/":
                 self.current_dir = self.current_dir + clicked_file.name
@@ -123,9 +147,6 @@ class MainFrame(QtWidgets.QFrame):
             downed_data = unidrive.download_file(self.current_dir+"/"+clicked_file.name)
             print(downed_data)
             """
-
-    def listview_key_pressed(self):
-        print("key pressed")
 
     def title_bar(self):
         return self.m_titleBar
@@ -283,8 +304,8 @@ class MainFrame(QtWidgets.QFrame):
         fileName = path.stem
         ext = path.suffix
         image = self.ext_to_QPixmap(ext)
-        row = len(self.model.pixmaps)
-        row = self.model.add_piece(image, QPoint(row, 0), fileName)
+        last_idx = len(self.model.files)
+        row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(fileName, False))
         # TODO it's for test.
         # delete this variable
         info = DirectoryEntry(fileName)
@@ -295,7 +316,8 @@ class MainFrame(QtWidgets.QFrame):
         fileName = path.stem
         ext = path.suffix
         image = self.ext_to_QPixmap(ext)
-        row = self.model.add_piece(image, QPoint(0, 0), fileName)
+        last_idx = len(self.model.files)
+        row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(fileName, False))
         # TODO it's for test.
         # delete this variable
         info = DirectoryEntry(fileName)
@@ -306,7 +328,8 @@ class MainFrame(QtWidgets.QFrame):
             path = Path(path)
             folder_name = path.stem
             image = QPixmap('images/folder.png')
-            row = self.model.add_piece(image, QPoint(0, 0))
+            last_idx = len(self.model.files)
+            row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(folder_name, True))
 
             # TODO it's for test.
             # delete this variable
@@ -321,7 +344,8 @@ class MainFrame(QtWidgets.QFrame):
     def add_folder_by_directory_entry(self, folder):
         try:
             image = QPixmap('images/folder.png')
-            row = self.model.add_piece(image, QPoint(0, 0), folder.name)
+            last_idx = len(self.model.files)
+            row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(folder.name, True))
             self.file_in_current.append(folder)
         except PermissionError:
             pass

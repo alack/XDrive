@@ -154,10 +154,8 @@ class MenuBar(QtWidgets.QFrame):
         # set home button
         self.homeBtn = QtWidgets.QToolButton()
         self.homeBtn.setIcon(QtGui.QIcon('images/home.png'))
-
-        # set array button
-        #self.arrangeBtn = QtWidgets.QToolButton()
-        #self.arrangeBtn.setIcon(QtGui.QIcon('images/arrange.png'))
+        #self.homeBtn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        #self.homeBtn.setText("home!")
 
         # set add folder button
         self.addFolderBtn = QtWidgets.QToolButton()
@@ -183,23 +181,14 @@ class MenuBar(QtWidgets.QFrame):
         self.layout.addWidget(self.progressBar)
         self.layout.addWidget(self.homeBtn)
         self.layout.addWidget(self.addFolderBtn)
-       # self.layout.addWidget(self.arrangeBtn)
         self.layout.addWidget(self.addCloudBtn)
         self.layout.addWidget(self.removeCloudBtn)
-
-        # add action
-        #self.arrangeBtn.clicked.connect(self.directory_arrange_action)
-        self.addFolderBtn.clicked.connect(self.add_folder_btn_action)
 
         # set alignment
         self.layout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         # set title bar size
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.maxNormal = False
-
-    def add_folder_btn_action(self):
-        image = QPixmap('images/folder.png')
-        self.parent().model.add_piece(image, QPoint(0, 0), "Null")
 
     def add_menu_setting(self):
         self.addMenu = QtWidgets.QMenu()
@@ -358,56 +347,59 @@ class PiecesModel(QAbstractListModel):
         super(PiecesModel, self).__init__(parent)
         self.locations = []
         self.pixmaps = []
-        self.fileNames = []
+        self.files = [] # list of DirectoryEntry. instead of self.fineNames
 
     def clear(self):
         self.locations = []
         self.pixmaps = []
-        self.fileNames = []
+        self.files = []
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return None
-        if not 0 <= index.row() < self.rowCount():
+        if 0 > index.row() or index.row() >= self.rowCount():
             return None
         row = index.row()
         if role == Qt.DisplayRole:
-            return self.fileNames[row]
+            length = len(self.files[row].name)
+            if length >= 8:
+                return self.files[row].name[:8]+".."
+            return self.files[row].name
         if role == Qt.DecorationRole:
-            return QIcon(self.pixmaps[index.row()].scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            return QIcon(self.pixmaps[row].scaled(100, 100, Qt.IgnoreAspectRatio, Qt.SmoothTransformation))
         if role == Qt.EditRole:
-            return self.fileNames[index.row()]
+            return self.files[row].name
         if role == Qt.ToolTipRole:
             return "Press F2 to change File Name"
         if role == Qt.ForegroundRole:
             return QBrush(QColor(0, 0, 0, 127))
         if role == Qt.UserRole:
-            return self.pixmaps[index.row()]
+            return self.pixmaps[row]
         if role == Qt.UserRole + 1:
-            return self.locations[index.row()]
+            return self.locations[row]
         return None
 
     def setData(self, index, value, role=Qt.EditRole):
         if role == Qt.EditRole:
-            value_str = value
-            self.fileNames[index.row()] = value_str
-            self.dataChanged.emit(index, index)
+            ## TODO : this is bug!
+            if index.row() >= len(self.files):
+                return False
+            self.files[index.row()].name = value
+            self.dataChanged.emit(index, index, [Qt.EditRole])
             return True
 
-    def add_piece(self, pixmap, location, name):
+    def add_piece(self, pixmap, location, directory_entry):
         row = len(self.pixmaps)
         self.beginInsertRows(QModelIndex(), row, row)
         self.pixmaps.insert(row, pixmap)
         self.locations.insert(row, location)
-        self.fileNames.insert(row, name)
+        self.files.insert(row, directory_entry)
         self.endInsertRows()
         return row
 
     def flags(self, index):
-        flag = super(PiecesModel, self).flags(index)
-        if index.isValid():
-            return (Qt.ItemIsEnabled | Qt.ItemIsSelectable |
-                    Qt.ItemIsDragEnabled | Qt.ItemIsEditable | Qt.ItemIsDropEnabled)
+        return (Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsDragEnabled |
+                Qt.ItemIsDropEnabled | Qt.ItemIsEnabled)
 
     def removeRows(self, row, count, parent):
         if parent.isValid():
@@ -423,12 +415,12 @@ class PiecesModel(QAbstractListModel):
 
         del self.pixmaps[beginRow:endRow + 1]
         del self.locations[beginRow:endRow + 1]
-        del self.fileNames[beginRow:endRow + 1]
+        del self.files[beginRow:endRow + 1]
         self.endRemoveRows()
         return True
 
-    def mimeTypes(self):
-        return ['image/x-puzzle-piece']
+#    def mimeTypes(self):
+        #return ['image/x-puzzle-piece']
 
     def mimeData(self, indexes):
         mimeData = QMimeData()
@@ -440,7 +432,6 @@ class PiecesModel(QAbstractListModel):
                 pixmap = QPixmap(self.data(index, Qt.UserRole))
                 location = self.data(index, Qt.UserRole + 1)
                 stream << pixmap << location
-
         mimeData.setData('image/x-puzzle-piece', encodedData)
         return mimeData
 
@@ -468,7 +459,6 @@ class PiecesModel(QAbstractListModel):
         while not stream.atEnd():
             pixmap = QPixmap()
             location = QPoint()
-            name = ""
             stream >> pixmap >> location
 
             self.beginInsertRows(QModelIndex(), endRow, endRow)
@@ -530,13 +520,6 @@ class DirectoryView(QListView):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F2:
             print("need to change name")
-
-
-class DebugPanel(QFrame):
-    def __init__(self, parent=None):
-        super(DebugPanel, self).__init__(parent)
-        self.setMinimumSize(800, 300)
-        layout = QHBoxLayout(self)
-        self.setLayout(layout)
-        self.textEdit = QPlainTextEdit()
-        layout.addWidget(self.textEdit)
+        if event.key() == Qt.Key_Delete:
+            for i in self.selectedIndexes():
+                print(self.model().files[i.row()].name)
