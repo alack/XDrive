@@ -405,6 +405,13 @@ class PiecesModel(QAbstractListModel):
         self.endInsertRows()
         return row
 
+    def remove_piece(self, row):
+        self.beginRemoveRows(QModelIndex(), row, row)
+        del(self.pixmaps[row])
+        del (self.locations[row])
+        del (self.files[row])
+        self.endRemoveRows()
+
     def flags(self, index):
         return (Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsDragEnabled |
                 Qt.ItemIsDropEnabled | Qt.ItemIsEnabled)
@@ -486,6 +493,8 @@ class PiecesModel(QAbstractListModel):
 
 
 class DirectoryView(QListView):
+    key_pressed_signal = QtCore.pyqtSignal(str, int)
+
     def __init__(self, parent=None):
         super(DirectoryView, self).__init__(parent)
         css = """
@@ -527,7 +536,8 @@ class DirectoryView(QListView):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F2:
+            # TODO : rename
             print("need to change name")
         if event.key() == Qt.Key_Delete:
             for i in self.selectedIndexes():
-                print(self.model().files[i.row()].name)
+                self.key_pressed_signal.emit(self.model().files[i.row()].name, i.row())

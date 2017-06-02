@@ -48,8 +48,7 @@ class MainFrame(QtWidgets.QFrame):
         self.m_listview.doubleClicked.connect(self.listview_double_clicked)
         self.m_listview.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.m_listview.setDragDropMode(QAbstractItemView.DragDrop)
-
-        self.m_listview.setDragDropOverwriteMode(True)
+        self.m_listview.key_pressed_signal.connect(self.listview_del_pressed)
 
         self.model = PiecesModel()
         self.m_listview.setModel(self.model)
@@ -70,6 +69,15 @@ class MainFrame(QtWidgets.QFrame):
         self.load_data_from_store_list()
         self.load_root_files()
 
+    def listview_del_pressed(self, filename, row):
+        unidrive.remove_file(self.current_dir+filename)
+        self.model.remove_piece(row)
+        for i, item in enumerate(self.file_in_current):
+            if item.name == filename:
+                del(self.file_in_current[i])
+                break
+
+
     def folder_open_btn_action(self):
         folder = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
         self.download_dir = folder
@@ -77,15 +85,19 @@ class MainFrame(QtWidgets.QFrame):
     def add_folder_btn_action(self):
         image = QPixmap('images/folder.png')
         last_idx = len(self.model.files)
+        default_folder_name = "newFolder"
         newFolderName = "newFolder"
         num = 1
         while True:
+            exit_flag = 0
             for item in self.model.files:
-                if newFolderName+str(num) == item:
-                    num += 1
-                    continue
-            break
-        print("name :",self.current_dir+"||"+newFolderName)
+                if item.is_dir is True:
+                    if newFolderName == item.name:
+                        newFolderName = default_folder_name + "(" + str(num) + ")"
+                        num += 1
+                        exit_flag = 1
+            if exit_flag == 0:
+                break
         unidrive.make_directory(self.current_dir, newFolderName)
         self.add_folder_by_directory_entry(DirectoryEntry(newFolderName, True))
 
@@ -142,7 +154,7 @@ class MainFrame(QtWidgets.QFrame):
         fileName = path.stem
         ext = path.suffix
         if clicked_file.is_dir:
-            self.current_dir = self.current_dir + clicked_file.name
+            self.current_dir = self.current_dir + clicked_file.name + "/"
             self.dir_selected(clicked_file.name, False)
         # TODO when user do doubleClick file? downlaod : not
         else:
@@ -151,13 +163,16 @@ class MainFrame(QtWidgets.QFrame):
             elif os.path.exists(self.download_dir) is False:
                 self.m_statusBar.set_status_fail("Download directory is not exists")
             else:
+                name_num = 1
+                while os.path.exists(self.download_dir + "/" + fileName + ext):
+                    fileName = path.stem + "(" + str(name_num) + ")"
+                    name_num += 1
                 downed_data = unidrive.download_file(self.current_dir+clicked_file.name)
                 print(downed_data)
                 # TODO : if file is existed ? "new" + filename
                 with open(self.download_dir+"/"+fileName+ext, 'wb') as outfile:
                     outfile.write(downed_data)
                 self.m_statusBar.set_status_ok("Download Done. "+self.download_dir+"/"+fileName+ext)
-
 
     def title_bar(self):
         return self.m_titleBar
