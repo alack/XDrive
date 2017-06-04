@@ -389,6 +389,9 @@ class PiecesModel(QAbstractListModel):
         if 0 > index.row() or index.row() >= self.rowCount():
             return False
         if role == Qt.EditRole:
+            if self.files[index.row()].name == value:
+                print("not changed")
+                return False
             self.do_rename_signal.emit(self.files[index.row()].name, value)
             self.files[index.row()].name = value
             self.dataChanged.emit(index, index)
@@ -407,9 +410,9 @@ class PiecesModel(QAbstractListModel):
 
     def remove_piece(self, row):
         self.beginRemoveRows(QModelIndex(), row, row)
-        del(self.pixmaps[row])
-        del (self.locations[row])
-        del (self.files[row])
+        del self.pixmaps[row]
+        del self.locations[row]
+        del self.files[row]
         self.endRemoveRows()
 
     def flags(self, index):
@@ -493,8 +496,8 @@ class PiecesModel(QAbstractListModel):
 
 
 class DirectoryView(QListView):
-    del_key_pressed_signal = QtCore.pyqtSignal(str, int)
-    f2_key_pressed_signal = QtCore.pyqtSignal(str, int)
+    del_request_signal = QtCore.pyqtSignal(str, int)
+    rename_request_signal = QtCore.pyqtSignal(int)
 
     def __init__(self, parent=None):
         super(DirectoryView, self).__init__(parent)
@@ -538,7 +541,26 @@ class DirectoryView(QListView):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F2:
             for i in self.selectedIndexes():
-                self.f2_key_pressed_signal.emit(self.model().files[i.row()].name, i.row())
+                self.rename_request_signal.emit(i.row())
         if event.key() == Qt.Key_Delete:
             for i in self.selectedIndexes():
-                self.del_key_pressed_signal.emit(self.model().files[i.row()].name, i.row())
+                self.del_request_signal.emit(self.model().files[i.row()].name, i.row())
+
+    def popup_menu(self, pos):
+        menu = QMenu()
+        newFolderAction = QAction("New folder", None)
+        #newFolderAction.triggered.connect(something action)
+        menu.addAction(newFolderAction)
+        menu.addSeparator()
+        menu.addAction("Upload")
+        menu.addAction("Download")
+        menu.addSeparator()
+        menu.addAction("Rename")
+        menu.addSeparator()
+        menu.addAction("Delete")
+
+        action = menu.exec_(self.mapToGlobal(pos))
+
+        if action == newFolderAction:
+            print("it's new folder action!")
+

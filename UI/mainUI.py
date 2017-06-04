@@ -48,9 +48,11 @@ class MainFrame(QtWidgets.QFrame):
         self.m_listview = DirectoryView()
         self.m_listview.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.m_listview.setDragDropMode(QAbstractItemView.DragDrop)
+        self.m_listview.setContextMenuPolicy(Qt.CustomContextMenu)
         self.m_listview.doubleClicked.connect(self.listview_double_clicked)
-        self.m_listview.del_key_pressed_signal.connect(self.listview_del_pressed)
-        self.m_listview.f2_key_pressed_signal.connect(self.listview_f2_pressed)
+        self.m_listview.del_request_signal.connect(self.listview_del_pressed)
+        self.m_listview.rename_request_signal.connect(self.listview_f2_pressed)
+        self.m_listview.customContextMenuRequested.connect(self.m_listview.popup_menu)
 
         self.model = PiecesModel()
         self.model.do_rename_signal.connect(self.do_rename)
@@ -84,7 +86,7 @@ class MainFrame(QtWidgets.QFrame):
                 del(self.file_in_current[i])
                 break
 
-    def listview_f2_pressed(self, filename, row):
+    def listview_f2_pressed(self, row):
         idx = self.m_listview.model().index(row, 0, QModelIndex())
         self.m_listview.setCurrentIndex(idx)
         self.m_listview.edit(idx)
@@ -290,7 +292,7 @@ class MainFrame(QtWidgets.QFrame):
                         else:
                             self.m_statusBar.set_status_ok(str(upload_list[0].toLocalFile()) + " upload failed")
                     except BaseStoreException as e:
-                        self.m_statusBar.set_status_fail(cur_path+" upload error")
+                        self.m_statusBar.set_status_fail(str(cur_path) + " upload error")
                     else:
                         self.m_statusBar.set_status_ok("Upload Done.")
         else:
