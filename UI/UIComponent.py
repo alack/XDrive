@@ -114,6 +114,7 @@ class TitleBar(QtWidgets.QFrame):
 
 
 class MenuBar(QtWidgets.QFrame):
+    drive_remove_signal = QtCore.pyqtSignal(str)
     def __init__(self, parent=None):
         QtWidgets.QFrame.__init__(self, parent)
         self.setWindowFlags(Qt.FramelessWindowHint)
@@ -141,7 +142,7 @@ class MenuBar(QtWidgets.QFrame):
             width: 20px;
         }
         """
-
+        self.drive_actions = QActionGroup(self)
         # set css and background
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Highlight)
@@ -210,22 +211,16 @@ class MenuBar(QtWidgets.QFrame):
         self.removeMenu = QtWidgets.QMenu()
 
     def remove_menu_add_item(self, item):
-        self.parent().drive_action_list.append(QAction(str(item[0]+"/"+item[1]), self))
-        self.parent().drive_action_list[-1].triggered.connect(
-            lambda x: self.drive_remove_each_clicked(item))
-        self.removeMenu.addAction(self.parent().drive_action_list[-1])
+        added_action = QAction(str(item[0]+"/"+item[1]), self)
+        self.drive_actions.addAction(added_action)
+        self.drive_actions.actions()[-1].triggered.connect(
+            lambda x: self.drive_remove_each_clicked(added_action, item[1]))
+        self.removeMenu.addAction(self.drive_actions.actions()[-1])
 
-    def drive_remove_each_clicked(self, item):
-        for i in range(len(self.parent().connected_drive_info)):
-            if item == self.parent().connected_drive_info[i]:
-                self.removeMenu.removeAction(self.parent().drive_action_list[i])
-                del self.parent().drive_action_list[i]
-                return
-
-    """
-    def directory_arrange_action(self):
-        print("arrange button clicked\n")
-    """
+    def drive_remove_each_clicked(self, item, name):
+        self.removeMenu.removeAction(item)
+        del item
+        self.drive_remove_signal.emit(name)
 
     # progressbar's color, percent
     def set_progressbar(self, value):
@@ -339,23 +334,24 @@ class StatusBar(QtWidgets.QDialog):
 
     def set_status_ok(self, msg):
         self.statusIconBtn.setIcon(QIcon('images/status_ok.png'))
-        self.statusLabel.setText(msg)
+        self.set_status_label(msg)
 
     def set_status_wait(self, msg):
         self.statusIconBtn.setIcon(QIcon('images/status_wait.png'))
-        self.statusLabel.setText(msg)
+        self.set_status_label(msg)
 
     def set_status_fail(self, msg):
         self.statusIconBtn.setIcon(QIcon('images/status_fail.png'))
-        self.statusLabel.setText(msg)
+        self.set_status_label(msg)
 
 
 class PiecesModel(QAbstractListModel):
+    do_rename_signal = QtCore.pyqtSignal(str, str)
     def __init__(self, parent=None):
         super(PiecesModel, self).__init__(parent)
         self.locations = []
         self.pixmaps = []
-        self.files = [] # list of DirectoryEntry. instead of self.fineNames
+        self.files = []# list of DirectoryEntry. instead of self.fineNames
 
     def clear(self):
         self.locations = []
@@ -388,13 +384,17 @@ class PiecesModel(QAbstractListModel):
         return None
 
     def setData(self, index, value, role=Qt.EditRole):
+        if not index.isValid():
+            return False
+        if 0 > index.row() or index.row() >= self.rowCount():
+            return False
         if role == Qt.EditRole:
-            ## TODO : this is bug!
-            if index.row() >= len(self.files):
-                return False
+            self.do_rename_signal.emit(self.files[index.row()].name, value)
             self.files[index.row()].name = value
-            self.dataChanged.emit(index, index, [Qt.EditRole])
+            self.dataChanged.emit(index, index)
+
             return True
+        return False
 
     def add_piece(self, pixmap, location, directory_entry):
         row = len(self.pixmaps)
@@ -434,8 +434,8 @@ class PiecesModel(QAbstractListModel):
         self.endRemoveRows()
         return True
 
-#    def mimeTypes(self):
-        #return ['image/x-puzzle-piece']
+    def mimeTypes(self):
+        return ['image/x-puzzle-piece']
 
     def mimeData(self, indexes):
         mimeData = QMimeData()
@@ -493,7 +493,8 @@ class PiecesModel(QAbstractListModel):
 
 
 class DirectoryView(QListView):
-    key_pressed_signal = QtCore.pyqtSignal(str, int)
+    del_key_pressed_signal = QtCore.pyqtSignal(str, int)
+    f2_key_pressed_signal = QtCore.pyqtSignal(str, int)
 
     def __init__(self, parent=None):
         super(DirectoryView, self).__init__(parent)
@@ -536,8 +537,8 @@ class DirectoryView(QListView):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F2:
-            # TODO : rename
-            print("need to change name")
+            for i in self.selectedIndexes():
+                self.f2_key_pressed_signal.emit(self.model().files[i.row()].name, i.row())
         if event.key() == Qt.Key_Delete:
             for i in self.selectedIndexes():
-                self.key_pressed_signal.emit(self.model().files[i.row()].name, i.row())
+                self.del_key_pressed_signal.emit(self.model().files[i.row()].name, i.row())

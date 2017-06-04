@@ -1,12 +1,13 @@
-from exceptions import *
 import os
 import pathlib
-from store import *
 import sys
+import webbrowser
+
 from urllib.parse import urlparse
 from UIComponent import *
 from UniDrive import UniDrive
-import webbrowser
+from store import *
+from exceptions import *
 
 
 class MainFrame(QtWidgets.QFrame):
@@ -15,7 +16,6 @@ class MainFrame(QtWidgets.QFrame):
         file_in_current is file list which are in the current directory
     """
     connected_drive_info = []
-    drive_action_list = []
     file_in_current = []
     current_dir = "/"
     download_dir = ""
@@ -42,15 +42,18 @@ class MainFrame(QtWidgets.QFrame):
         self.m_menuBar = MenuBar()
         self.m_menuBar.addFolderBtn.clicked.connect(self.add_folder_btn_action)
         self.m_menuBar.folderOpenBtn.clicked.connect(self.folder_open_btn_action)
+        self.m_menuBar.drive_remove_signal.connect(self.drive_remove_pressed)
 
         self.m_statusBar = StatusBar()
         self.m_listview = DirectoryView()
-        self.m_listview.doubleClicked.connect(self.listview_double_clicked)
         self.m_listview.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.m_listview.setDragDropMode(QAbstractItemView.DragDrop)
-        self.m_listview.key_pressed_signal.connect(self.listview_del_pressed)
+        self.m_listview.doubleClicked.connect(self.listview_double_clicked)
+        self.m_listview.del_key_pressed_signal.connect(self.listview_del_pressed)
+        self.m_listview.f2_key_pressed_signal.connect(self.listview_f2_pressed)
 
         self.model = PiecesModel()
+        self.model.do_rename_signal.connect(self.do_rename)
         self.m_listview.setModel(self.model)
         self.m_directoryBar = DirectoryBar()
         self.m_directoryBar.directoryButtonGroup.buttonClicked[QAbstractButton].connect(
@@ -69,6 +72,10 @@ class MainFrame(QtWidgets.QFrame):
         self.load_data_from_store_list()
         self.load_root_files()
 
+    def drive_remove_pressed(self, selected):
+        print("ready to remove")
+        unidrive.remove_store(selected)
+
     def listview_del_pressed(self, filename, row):
         unidrive.remove_file(self.current_dir+filename)
         self.model.remove_piece(row)
@@ -77,6 +84,14 @@ class MainFrame(QtWidgets.QFrame):
                 del(self.file_in_current[i])
                 break
 
+    def listview_f2_pressed(self, filename, row):
+        idx = self.m_listview.model().index(row, 0, QModelIndex())
+        self.m_listview.setCurrentIndex(idx)
+        self.m_listview.edit(idx)
+
+    def do_rename(self, before, after):
+        print(self.current_dir+before + " -> " + self.current_dir+after)
+        unidrive.rename(self.current_dir+before, self.current_dir+after)
 
     def folder_open_btn_action(self):
         folder = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
@@ -199,7 +214,7 @@ class MainFrame(QtWidgets.QFrame):
             res = input('response url for test-googledrive :')
             if unidrive.activate_store('test-googledrive', res):
                 self.m_statusBar.set_status_ok("Success test-googledrive")
-                recent_store = unidrive.get_recent_store()
+                recent_store = unidrive.get_store_list()[-1]
                 item = ["Google", recent_store['name']]
                 self.connected_drive_info.append(item)
                 self.m_menuBar.remove_menu_add_item(item)
@@ -223,8 +238,8 @@ class MainFrame(QtWidgets.QFrame):
             res = input('response url for test-dropbox :')
             if unidrive.activate_store('test-dropbox', res):
                 self.m_statusBar.set_status_ok("Success test-dropbox")
-                recent_store = unidrive.get_recent_store()
-                item = ["Google", recent_store['name']]
+                recent_store = unidrive.get_store_list()[-1]
+                item = ["Dropbox", recent_store['name']]
                 self.connected_drive_info.append(item)
                 self.m_menuBar.remove_menu_add_item(item)
             else:
@@ -270,8 +285,10 @@ class MainFrame(QtWidgets.QFrame):
                     with open(cur_path, 'rb') as src_file:
                         src_data = src_file.read()
                     try:
-                        unidrive.upload_file(self.current_dir+cur_path.name, src_data)
-
+                        if unidrive.upload_file(self.current_dir+cur_path.name, src_data) is True:
+                            self.m_statusBar.set_status_ok(str(upload_list[0].toLocalFile()) + " is uploaded")
+                        else:
+                            self.m_statusBar.set_status_ok(str(upload_list[0].toLocalFile()) + " upload failed")
                     except BaseStoreException as e:
                         self.m_statusBar.set_status_fail(cur_path+" upload error")
                     else:
