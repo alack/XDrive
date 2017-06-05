@@ -392,11 +392,23 @@ class MainFrame(QtWidgets.QFrame):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
+
+    #loading = LoadingPage()
+    #loading.move(60, 60)
+    #loading.show()
+
+    splash_pix = QPixmap('images/xd_blue.png')
+    splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+    splash.setMask(splash_pix.mask())
+    splash.show()
+    app.processEvents()
+
     prjdir = pathlib.Path('.').resolve()
     unidrive = UniDrive(prjdir)
 
     mainUI = MainFrame()
-    mainUI.move(60, 0)
+    mainUI.move(60, 60)
     mainUI.show()
+    splash.finish(mainUI)
 
     app.exec_()
