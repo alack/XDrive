@@ -498,6 +498,9 @@ class PiecesModel(QAbstractListModel):
 class DirectoryView(QListView):
     del_request_signal = QtCore.pyqtSignal(str, int)
     rename_request_signal = QtCore.pyqtSignal(int)
+    new_folder_request_signal = QtCore.pyqtSignal()
+    download_request_signal = QtCore.pyqtSignal(QModelIndex)
+    upload_request_signal = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super(DirectoryView, self).__init__(parent)
@@ -547,20 +550,37 @@ class DirectoryView(QListView):
                 self.del_request_signal.emit(self.model().files[i.row()].name, i.row())
 
     def popup_menu(self, pos):
+        selected_items = self.selectedIndexes()
+
         menu = QMenu()
-        newFolderAction = QAction("New folder", None)
-        #newFolderAction.triggered.connect(something action)
+        newFolderAction = QAction("New folder", None)        #newFolderAction.triggered.connect(something action)
+        uploadAction = QAction("Upload", None)
+        downloadAction = QAction("Download", None)
+        renameAction = QAction("Rename", None)
+        deleteAction = QAction("Delete", None)
+
         menu.addAction(newFolderAction)
         menu.addSeparator()
-        menu.addAction("Upload")
-        menu.addAction("Download")
+        menu.addAction(uploadAction)
+        menu.addAction(downloadAction)
         menu.addSeparator()
-        menu.addAction("Rename")
-        menu.addSeparator()
-        menu.addAction("Delete")
+        if len(selected_items) == 1:
+            if self.model().files[selected_items[0].row()].is_dir is False:
+                menu.addAction(renameAction)
+                menu.addSeparator()
+        menu.addAction(deleteAction)
 
         action = menu.exec_(self.mapToGlobal(pos))
 
         if action == newFolderAction:
-            print("it's new folder action!")
-
+            self.new_folder_request_signal.emit()
+        elif action == uploadAction:
+            self.upload_request_signal.emit()
+        elif action == downloadAction:
+            for i in self.selectedIndexes():
+                self.download_request_signal.emit(i)
+        elif action == renameAction:
+            self.rename_request_signal.emit(selected_items[0].row())
+        elif action == deleteAction:
+            for i in self.selectedIndexes():
+                self.del_request_signal.emit(self.model().files[i.row()].name, i.row())

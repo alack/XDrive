@@ -40,8 +40,8 @@ class MainFrame(QtWidgets.QFrame):
 
         self.m_titleBar = TitleBar()
         self.m_menuBar = MenuBar()
-        self.m_menuBar.addFolderBtn.clicked.connect(self.add_folder_btn_action)
-        self.m_menuBar.folderOpenBtn.clicked.connect(self.folder_open_btn_action)
+        self.m_menuBar.addFolderBtn.clicked.connect(self.add_folder_action)
+        self.m_menuBar.folderOpenBtn.clicked.connect(self.set_download_directory_action)
         self.m_menuBar.drive_remove_signal.connect(self.drive_remove_pressed)
 
         self.m_statusBar = StatusBar()
@@ -49,10 +49,13 @@ class MainFrame(QtWidgets.QFrame):
         self.m_listview.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.m_listview.setDragDropMode(QAbstractItemView.DragDrop)
         self.m_listview.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.m_listview.customContextMenuRequested.connect(self.m_listview.popup_menu)
+
         self.m_listview.doubleClicked.connect(self.listview_double_clicked)
         self.m_listview.del_request_signal.connect(self.listview_del_pressed)
         self.m_listview.rename_request_signal.connect(self.listview_f2_pressed)
-        self.m_listview.customContextMenuRequested.connect(self.m_listview.popup_menu)
+        self.m_listview.new_folder_request_signal.connect(self.add_folder_action)
+        self.m_listview.download_request_signal.connect(self.listview_double_clicked)
 
         self.model = PiecesModel()
         self.model.do_rename_signal.connect(self.do_rename)
@@ -95,11 +98,10 @@ class MainFrame(QtWidgets.QFrame):
         print(self.current_dir+before + " -> " + self.current_dir+after)
         unidrive.rename(self.current_dir+before, self.current_dir+after)
 
-    def folder_open_btn_action(self):
-        folder = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-        self.download_dir = folder
+    def set_download_directory_action(self):
+        self.download_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
 
-    def add_folder_btn_action(self):
+    def add_folder_action(self):
         image = QPixmap('images/folder.png')
         last_idx = len(self.model.files)
         default_folder_name = "newFolder"
@@ -176,7 +178,8 @@ class MainFrame(QtWidgets.QFrame):
         # TODO when user do doubleClick file? downlaod : not
         else:
             if self.download_dir == "":
-                self.m_statusBar.set_status_fail("Need to set download directory")
+                self.set_download_directory_action()
+                #self.m_statusBar.set_status_fail("Need to set download directory")
             elif os.path.exists(self.download_dir) is False:
                 self.m_statusBar.set_status_fail("Download directory is not exists")
             else:
