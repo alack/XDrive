@@ -1,0 +1,16 @@
+{
+    "test-googledrive@GoogleDrive": {
+        "access_token": "ya29.GlxhBBvRN73jm121w-LImEg-GTtSZd07No0QP0XlqOTpgNqiGqIRE3sfMwrdDXDx8a2sZESxdGO4-v7rG4p5AjNeIvzSSD5FmN84t4-Vfk5gPvLX7kqZZ9D80UbWoQ",
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjBkNDI5Y2I1M2Q4YTFlZjA5ZjFhZTY1ODc1N2JlMjFlNzZhNjEzN2IifQ.eyJhenAiOiI5MjI5MzgyMzYxNTctNWRmYTFtcDBnNXRnaDQ4YjR1aDl1ZTE5Y3NnaW42YWguYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI5MjI5MzgyMzYxNTctNWRmYTFtcDBnNXRnaDQ4YjR1aDl1ZTE5Y3NnaW42YWguYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTAzNTQ1NDA4Nzg2Mzg2MjM3NDQiLCJlbWFpbCI6InhkLmdhbGF4eWJvbWJAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImF0X2hhc2giOiJUWWRxcndpY3ZsSWFPMDU4Y1poQVR3IiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwiaWF0IjoxNDk2NzE5OTMyLCJleHAiOjE0OTY3MjM1MzIsIm5hbWUiOiJ1c2VyIHN1cGVyIiwicGljdHVyZSI6Imh0dHBzOi8vbGg0Lmdvb2dsZXVzZXJjb250ZW50LmNvbS8tQ21WUERSRWdCRFUvQUFBQUFBQUFBQUkvQUFBQUFBQUFBQUEvQUF5WUJGN3E1MEk1VlJZdzl4eGJvZExHZm9yR3ZGa2VEdy9zOTYtYy9waG90by5qcGciLCJnaXZlbl9uYW1lIjoidXNlciIsImZhbWlseV9uYW1lIjoic3VwZXIiLCJsb2NhbGUiOiJrbyJ9.Uv7XzCmH8EJHYvi2pZ1CGEfYSCSlZQUjvVfmO-UsXB628cM3hq86Mj3zxKfwJKwFWVwQYYc9JS18rLzGJJRjraY_lsEIwHIF-EJ633C3XEKMFD-KQuwNntSct4t-QFj7_3IGC6XxJrl7ztQ9bgYwUMwFU6eecGc5YcNuUBX9N_zW0ZQ2Sz0fziKaPmt4t2nY2n5avgV_r_gLlbYBxq7d7hfewqWy7eMpTt4Zj6dOn66B34bwUaA75OD7g-vZzByUMbYBFXFE41PgHHpLRenNa4PjWTsHxep4OqiYh8sxZ8MfZNOX2VKu00VpOD9DFU_XB914LqAK34iZ1tV7skKCzw",
+        "expires_at": 1496723532.3975027,
+        "refresh_token": "1/kfZAqdlXRCrTYkZKT9WxYRUi0KDKX8f1cBuCpbl0YZMYO2ByoSDTmxaPcfot_4QK"
+    },
+    "test-dropbox@Dropbox": {
+        "access_token": "0eHAU-2jRRAAAAAAAAAAZL0wgyfAuYsxRg7bSxdi54iSKuxd3vVvJMfEvFvkBdQD",
+        "token_type": "bearer",
+        "uid": "660610586",
+        "account_id": "dbid:AAB1Augk4-4Q-tSthOfsm50mQA1gbZ0-yuw"
+    }
+}
