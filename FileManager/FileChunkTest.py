@@ -1,5 +1,5 @@
 from chunk import chunkFile
 
-filename = "test.png"
+filename = "test.jpg"
 
 chunkFile.chunking(filename)

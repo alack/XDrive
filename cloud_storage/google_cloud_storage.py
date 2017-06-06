@@ -26,8 +26,23 @@ except ImportError:
 
 class google_storage_controller:
     SCOPES = 'https://www.googleapis.com/auth/drive'
-    CLIENT_SECRET_FILE = {"installed":{"client_id":"767027085829-0macfn189q3ddpbsi78tdg4ue938k6nv.apps.googleusercontent.com","project_id":"opportune-ego-163505","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://accounts.google.com/o/oauth2/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_secret":"HjXDJKdLgz8eRbWVAMBq7w5N","redirect_uris":["urn:ietf:wg:oauth:2.0:oob","http://localhost"]}}
-    APPLICATION_NAME = 'Drive API Quickstart'
+    CLIENT_SECRET_FILE = {
+        "installed":
+        {
+            "client_id":"520415020989-j0t973a1oft0anlkan9j3qe6qg4nqme8.apps.googleusercontent.com",
+            "project_id":"xdrive-167710",
+            "auth_uri":"https://accounts.google.com/o/oauth2/auth",
+            "token_uri":"https://accounts.google.com/o/oauth2/token",
+            "auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs",
+            "client_secret":"A72x7a00FSdsnAZnGNDgk55z",
+            "redirect_uris":
+            [
+                "urn:ietf:wg:oauth:2.0:oob",
+                "http://localhost"
+            ]
+        }
+    }
+    APPLICATION_NAME = 'XDrives'
 
     def __init__(self):
         pass
@@ -45,7 +60,8 @@ class google_storage_controller:
         credential_dir = os.path.join(home_dir, '.credentials')
         if not os.path.exists(credential_dir):
             os.makedirs(credential_dir)
-        credential_path = os.path.join(credential_dir, 'djsc023401.json')
+        credential_path = os.path.join(credential_dir, 'client_secret.json')
+        #credential_path =
 
         store = Storage(credential_path)
         credentials = store.get()
