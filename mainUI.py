@@ -1,9 +1,7 @@
 import os
-import pathlib
 import sys
 import webbrowser
 from PyQt5 import QtGui, QtCore, QtWidgets
-#from urllib.parse import urlparse
 from UniDrive import UniDrive
 from uicomponents import *
 from exceptions import *
@@ -47,11 +45,11 @@ class MainFrame(QtWidgets.QFrame):
         self.m_listview.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.m_listview.customContextMenuRequested.connect(self.m_listview.popup_menu)
 
-        self.m_listview.doubleClicked.connect(self.listview_double_clicked)
+        self.m_listview.doubleClicked.connect(self.list_view_double_clicked)
         self.m_listview.del_request_signal.connect(self.listview_del_pressed)
         self.m_listview.rename_request_signal.connect(self.listview_f2_pressed)
         self.m_listview.new_folder_request_signal.connect(self.add_folder_action)
-        self.m_listview.download_request_signal.connect(self.listview_double_clicked)
+        self.m_listview.download_request_signal.connect(self.list_view_double_clicked)
         self.m_listview.upload_request_signal.connect(self.listview_upload_clicked)
 
         self.model = PiecesModel()
@@ -71,9 +69,9 @@ class MainFrame(QtWidgets.QFrame):
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
 
-        self.add_drive_menubar_action()
+        self.add_drive_menu_bar_action()
         self.load_data_from_store_list()
-        self.load_root_files()
+        self.load_files_from_root()
 
     def listview_upload_clicked(self):
         files = QtWidgets.QFileDialog.getOpenFileNames()
@@ -149,29 +147,29 @@ class MainFrame(QtWidgets.QFrame):
         for store in infos:
             type = "unknown"
             if store['type'] == "GoogleDriveStore":
-                type = "Google"
+                type = "GoogleDrive"
             elif store['type'] == "DropboxStore":
                 type = "Dropbox"
-            # TODO add box
-
+            elif store['type'] == "BoxStore":
+                type = "Box"
             item = [type, store['name']]
             self.connected_drive_info.append(item)
             self.m_menuBar.remove_menu_add_item(item)
 
-    def dir_selected(self, name, isFromDirectoryBar):
-        nextlist = VirtualEntry.list_to_virtual(unidrive.get_list(self.current_dir))
-        self.file_in_current = nextlist[0:]
+    def dir_selected(self, name, is_from_director_bar):
+        next_list = VirtualEntry.list_to_virtual(unidrive.get_list(self.current_dir))
+        self.file_in_current = next_list[:]
         self.model.clear()
-        if isFromDirectoryBar == False:
+        if is_from_director_bar is False:
             if self.current_dir == '/':
                 self.m_directoryBar.set_root_button()
             else:
                 self.m_directoryBar.add_under_directory_button(name)
         self.m_listview.clear()
-        if len(nextlist) != 0:
-            self.m_listview.set_directory(nextlist)
+        if len(next_list) != 0:
+            self.m_listview.set_directory(next_list)
 
-    def listview_double_clicked(self, idx):
+    def list_view_double_clicked(self, idx):
         clicked_file = self.model.files[idx.row()]
         fileName = clicked_file.pure_name
         ext = clicked_file.ext
@@ -182,7 +180,6 @@ class MainFrame(QtWidgets.QFrame):
             self.set_download_directory_action()
             if os.path.exists(self.download_dir) is False:
                 self.m_statusBar.set_status_fail("Download directory is not exists")
-                self.download_dir = ""
                 return
             else:
                 name_num = 1
@@ -193,41 +190,43 @@ class MainFrame(QtWidgets.QFrame):
 
                 with open(self.download_dir+"/"+fileName+ext, 'wb') as outfile:
                     outfile.write(downed_data)
+
                 self.m_statusBar.set_status_ok("Download Done. "+self.download_dir+"/"+fileName+ext)
 
-    def title_bar(self):
-        return self.m_titleBar
-
-    def homebtn_clicked(self):
-        self.load_root_files()
-
-    def load_root_files(self):
+    def load_files_from_root(self):
         self.current_dir = "/"
         self.dir_selected("/", False)
 
-    def add_drive_menubar_action(self):
+    def add_drive_menu_bar_action(self):
         # set trigger to action
         self.m_menuBar.googleAddAction.triggered.connect(self.google_drive_clicked)
         self.m_menuBar.boxAddAction.triggered.connect(self.box_clicked)
         self.m_menuBar.dropboxAddAction.triggered.connect(self.dropbox_clicked)
-        self.m_menuBar.homeBtn.clicked.connect(self.homebtn_clicked)
+        self.m_menuBar.homeBtn.clicked.connect(self.load_files_from_root)
 
-    def google_drive_clicked(self):
-        # Get google auth url
+    def drive_addtion(self, type: str):
         try:
-            auth_url = unidrive.register_store('GoogleDriveStore', 'test-googledrive')
+            init_drive_name = type
+            name_num = 1
+            while [type, init_drive_name] in self.connected_drive_info:
+                init_drive_name = type + str(name_num)
+                name_num += 1
+            auth_url = unidrive.register_store(type+'Store', init_drive_name)
             webbrowser.open_new(auth_url)
-            res = input('response url for test-googledrive :')
-            if unidrive.activate_store('test-googledrive', res):
-                self.m_statusBar.set_status_ok("Success test-googledrive")
+            res = input('response url for ' + init_drive_name + ' : ')
+            if unidrive.activate_store(init_drive_name, res):
+                self.m_statusBar.set_status_ok("Success " + init_drive_name)
                 recent_store = unidrive.get_store_list()[-1]
-                item = ["Google", recent_store['name']]
+                item = [type, recent_store['name']]
                 self.connected_drive_info.append(item)
                 self.m_menuBar.remove_menu_add_item(item)
             else:
-                self.m_statusBar.set_status_fail("Fail test-googledrive")
+                self.m_statusBar.set_status_fail("Fail " + init_drive_name)
         except Exception:
-            self.m_statusBar.set_status_fail("test-googledrive is alread registered")
+            self.m_statusBar.set_status_fail(init_drive_name + "is alread registered")
+
+    def google_drive_clicked(self):
+        self.drive_addtion("GoogleDrive")
 
     def box_clicked(self):
         # TODO need to write code about box get auth_url
@@ -237,21 +236,7 @@ class MainFrame(QtWidgets.QFrame):
         # TODO delete Item to
 
     def dropbox_clicked(self):
-        # get dropbox auth_url
-        try:
-            auth_url = unidrive.register_store('DropboxStore', 'test-dropbox')
-            webbrowser.open_new(auth_url)
-            res = input('response url for test-dropbox :')
-            if unidrive.activate_store('test-dropbox', res):
-                self.m_statusBar.set_status_ok("Success test-dropbox")
-                recent_store = unidrive.get_store_list()[-1]
-                item = ["Dropbox", recent_store['name']]
-                self.connected_drive_info.append(item)
-                self.m_menuBar.remove_menu_add_item(item)
-            else:
-                self.m_statusBar.set_status_fail("Fail test-dropbox")
-        except Exception:
-            self.m_statusBar.set_status_fail("Test-googledrive is already registered")
+        self.drive_addtion("Dropbox")
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls:
@@ -412,8 +397,9 @@ if __name__ == '__main__':
     splash.show()
     app.processEvents()
 
-    prjdir = pathlib.Path('.').resolve()
+    prjdir = Path('.').resolve()
     unidrive = UniDrive(prjdir)
+
     mainUI = MainFrame()
     mainUI.move(60, 60)
     mainUI.show()
