@@ -1,0 +1,12 @@
+{
+    "stores": [
+        {
+            "name": "test-googledrive",
+            "type": "GoogleDriveStore"
+        },
+        {
+            "name": "test-dropbox",
+            "type": "DropboxStore"
+        }
+    ]
+}
