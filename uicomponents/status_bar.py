@@ -35,13 +35,13 @@ class StatusBar(QtWidgets.QDialog):
         self.statusLabel.setText(msg)
 
     def set_status_ok(self, msg):
-        self.statusIconBtn.setIcon(QtWidgets.QIcon('images/status_ok.png'))
+        self.statusIconBtn.setIcon(QtGui.QIcon('images/status_ok.png'))
         self.set_status_label(msg)
 
     def set_status_wait(self, msg):
-        self.statusIconBtn.setIcon(QtWidgets.QIcon('images/status_wait.png'))
+        self.statusIconBtn.setIcon(QtGui.QIcon('images/status_wait.png'))
         self.set_status_label(msg)
 
     def set_status_fail(self, msg):
-        self.statusIconBtn.setIcon(QtWidgets.QIcon('images/status_fail.png'))
+        self.statusIconBtn.setIcon(QtGui.QIcon('images/status_fail.png'))
         self.set_status_label(msg)

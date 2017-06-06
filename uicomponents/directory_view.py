@@ -7,7 +7,6 @@ class DirectoryView(QtWidgets.QListView):
     new_folder_request_signal = QtCore.pyqtSignal()
     download_request_signal = QtCore.pyqtSignal(QtCore.QModelIndex)
     upload_request_signal = QtCore.pyqtSignal()
-    download_dir_changed_request_signal = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super(DirectoryView, self).__init__(parent)
@@ -46,7 +45,7 @@ class DirectoryView(QtWidgets.QListView):
             if file.is_dir:
                 self.parent().add_folder_by_directory_entry(file)
             else:
-                self.parent().add_file_by_directory_entry(file)
+                self.parent().add_file_by_virtual_entry(file)
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_F2:
@@ -92,5 +91,3 @@ class DirectoryView(QtWidgets.QListView):
             self.rename_request_signal.emit(selected_items[0].row())
         elif action == deleteAction:
             self.del_request_signal.emit()
-        elif action == setDirectoryAction:
-            self.download_dir_changed_request_signal.emit()
