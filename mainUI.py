@@ -39,6 +39,7 @@ class MainFrame(QtWidgets.QFrame):
         self.m_menuBar.drive_remove_signal.connect(self.drive_remove_pressed)
 
         self.m_statusBar = StatusBar()
+
         self.m_listview = DirectoryView()
         self.m_listview.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.m_listview.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
@@ -170,6 +171,7 @@ class MainFrame(QtWidgets.QFrame):
             self.m_listview.set_directory(next_list)
 
     def list_view_double_clicked(self, idx):
+        self.m_statusBar.set_status_wait("Downloading...")
         clicked_file = self.model.files[idx.row()]
         fileName = clicked_file.pure_name
         ext = clicked_file.ext
@@ -258,10 +260,10 @@ class MainFrame(QtWidgets.QFrame):
             count = len(upload_list)
             if count >= 2:
                 status = str(count)+" files are uploading"
-                self.m_statusBar.set_status_ok(status)
+                self.m_statusBar.set_status_wait(status)
             elif count == 1:
                 status = str(upload_list[0].toLocalFile())
-                self.m_statusBar.set_status_ok(str(upload_list[0].toLocalFile())+" is uploading")
+                self.m_statusBar.set_status_wait(str(upload_list[0].toLocalFile())+" is uploading")
             for url in upload_list:
                 path = str(Path(url.toLocalFile()))
                 self.download_progress(path)
@@ -375,19 +377,19 @@ class MainFrame(QtWidgets.QFrame):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    """
+
     splash_pix = QtGui.QPixmap('images/loading.png')
     splash_pix_resized = splash_pix.scaled(1000, 800, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)
     splash = QtWidgets.QSplashScreen(splash_pix_resized, QtCore.Qt.WindowStaysOnTopHint)
     splash.show()
     app.processEvents()
-    """
+
     prjdir = Path('.').resolve()
     unidrive = UniDrive(prjdir)
 
     mainUI = MainFrame()
     mainUI.move(60, 60)
     mainUI.show()
-    #splash.finish(mainUI)
+    splash.finish(mainUI)
 
     app.exec_()

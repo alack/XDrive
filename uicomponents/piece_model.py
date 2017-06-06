@@ -38,7 +38,7 @@ class PiecesModel(QtCore.QAbstractListModel):
                 return fileName
             return None
         if role == QtCore.Qt.ToolTipRole:
-            return "Press F2 to change File Name"
+            return self.files[row].name
         if role == QtCore.Qt.ForegroundRole:
             return QtGui.QBrush(QtGui.QColor(0, 0, 0, 127))
         if role == QtCore.Qt.UserRole:

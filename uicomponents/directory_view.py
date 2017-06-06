@@ -29,6 +29,7 @@ class DirectoryView(QtWidgets.QListView):
         self.highlightedRect = QtCore.QRect()
         self.setAcceptDrops(True)
         self.setMinimumSize(400, 400)
+        self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers | QtWidgets.QAbstractItemView.EditKeyPressed)
 
     def clear(self):
         self.pieceLocations = []
