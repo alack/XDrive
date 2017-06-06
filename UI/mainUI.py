@@ -56,9 +56,12 @@ class MainFrame(QtWidgets.QFrame):
         self.m_listview.rename_request_signal.connect(self.listview_f2_pressed)
         self.m_listview.new_folder_request_signal.connect(self.add_folder_action)
         self.m_listview.download_request_signal.connect(self.listview_double_clicked)
+        self.m_listview.upload_request_signal.connect(self.listview_upload_clicked)
+        self.m_listview.download_dir_changed_request_signal.connect(self.set_download_directory_action)
 
         self.model = PiecesModel()
         self.model.do_rename_signal.connect(self.do_rename)
+
         self.m_listview.setModel(self.model)
         self.m_directoryBar = DirectoryBar()
         self.m_directoryBar.directoryButtonGroup.buttonClicked[QAbstractButton].connect(
@@ -77,17 +80,26 @@ class MainFrame(QtWidgets.QFrame):
         self.load_data_from_store_list()
         self.load_root_files()
 
+    def listview_upload_clicked(self):
+        files = QFileDialog.getOpenFileNames()
+        for path in files[0]:
+            self.download_progress(path)
+
     def drive_remove_pressed(self, selected):
         print("ready to remove")
         unidrive.remove_store(selected)
 
-    def listview_del_pressed(self, filename, row):
-        unidrive.remove_file(self.current_dir+filename)
-        self.model.remove_piece(row)
-        for i, item in enumerate(self.file_in_current):
-            if item.name == filename:
-                del(self.file_in_current[i])
-                break
+    def listview_del_pressed(self):
+        while len(self.m_listview.selectedIndexes()):
+            idx = self.m_listview.selectedIndexes()[0]
+            filename = self.model.files[idx.row()].name
+            unidrive.remove_file(self.current_dir+filename)
+            self.model.remove_piece(idx.row())
+            for i, item in enumerate(self.file_in_current):
+                if item.name == filename:
+                    del(self.file_in_current[i])
+                    break
+        self.set_progress_to_usage()
 
     def listview_f2_pressed(self, row):
         idx = self.m_listview.model().index(row, 0, QModelIndex())
@@ -99,7 +111,8 @@ class MainFrame(QtWidgets.QFrame):
         unidrive.rename(self.current_dir+before, self.current_dir+after)
 
     def set_download_directory_action(self):
-        self.download_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        self.download_dir = QFileDialog.getExistingDirectory(self, "Select Directory")
+        return self.download_dir
 
     def add_folder_action(self):
         image = QPixmap('images/folder.png')
@@ -175,20 +188,23 @@ class MainFrame(QtWidgets.QFrame):
         if clicked_file.is_dir:
             self.current_dir = self.current_dir + clicked_file.name + "/"
             self.dir_selected(clicked_file.name, False)
-        # TODO when user do doubleClick file? downlaod : not
+        # TODO when user do doubleClick file? download : not
         else:
             if self.download_dir == "":
-                self.set_download_directory_action()
-                #self.m_statusBar.set_status_fail("Need to set download directory")
-            elif os.path.exists(self.download_dir) is False:
+                download_dir = self.set_download_directory_action()
+                if download_dir == "":
+                    self.m_statusBar.set_status_fail("Need to set download directory")
+                    return
+            if os.path.exists(self.download_dir) is False:
                 self.m_statusBar.set_status_fail("Download directory is not exists")
+                self.download_dir = ""
+                return
             else:
                 name_num = 1
                 while os.path.exists(self.download_dir + "/" + fileName + ext):
                     fileName = path.stem + "(" + str(name_num) + ")"
                     name_num += 1
                 downed_data = unidrive.download_file(self.current_dir+clicked_file.name)
-                print(downed_data)
                 # TODO : if file is existed ? "new" + filename
                 with open(self.download_dir+"/"+fileName+ext, 'wb') as outfile:
                     outfile.write(downed_data)
@@ -226,7 +242,7 @@ class MainFrame(QtWidgets.QFrame):
             else:
                 self.m_statusBar.set_status_fail("Fail test-googledrive")
         except Exception:
-            self.m_statusBar.set_status_fail("tesg-googledrive is alread registered")
+            self.m_statusBar.set_status_fail("test-googledrive is alread registered")
 
     def box_clicked(self):
         # TODO need to write code about box get auth_url
@@ -278,29 +294,32 @@ class MainFrame(QtWidgets.QFrame):
                 self.m_statusBar.set_status_ok(str(upload_list[0].toLocalFile())+" is uploading")
             for url in upload_list:
                 path = urlparse(url.toLocalFile()).path
-                cur_path = Path(path)
-                if cur_path.is_dir():
-                    unidrive.make_directory(self.current_dir, cur_path.stem)
-                    self.add_folder_by_url(cur_path)
-                else:
-                    self.add_file_by_url(path)
-                    if cur_path.is_file() is False:
-                        self.m_statusBar.set_status_fail("file does not exists")
-                        continue
-                    with open(cur_path, 'rb') as src_file:
-                        src_data = src_file.read()
-                    try:
-                        if unidrive.upload_file(self.current_dir+cur_path.name, src_data) is True:
-                            self.m_statusBar.set_status_ok(str(upload_list[0].toLocalFile()) + " is uploaded")
-                        else:
-                            self.m_statusBar.set_status_ok(str(upload_list[0].toLocalFile()) + " upload failed")
-                    except BaseStoreException as e:
-                        self.m_statusBar.set_status_fail(str(cur_path) + " upload error")
-                    else:
-                        self.m_statusBar.set_status_ok("Upload Done.")
+                self.download_progress(path)
         else:
             self.m_listview.highlightedRect = QRect()
             event.ignore()
+
+    def download_progress(self, path):
+            cur_path = Path(path)
+            if cur_path.is_dir():
+                unidrive.make_directory(self.current_dir, cur_path.stem)
+                self.add_folder_by_url(cur_path)
+            else:
+                self.add_file_by_url(path)
+                if cur_path.is_file() is False:
+                    self.m_statusBar.set_status_fail("file does not exists")
+                    return
+                with open(cur_path, 'rb') as src_file:
+                    src_data = src_file.read()
+                try:
+                    if unidrive.upload_file(self.current_dir + cur_path.name, src_data) is True:
+                        self.m_statusBar.set_status_ok(str(path) + " is uploaded")
+                    else:
+                        self.m_statusBar.set_status_ok(str(path) + " upload failed")
+                except BaseStoreException as e:
+                    self.m_statusBar.set_status_fail(str(cur_path) + " upload error")
+                else:
+                    self.m_statusBar.set_status_ok("Upload Done.")
 
     def find_piece(self, pieceRect):
         try:
@@ -349,6 +368,7 @@ class MainFrame(QtWidgets.QFrame):
         # delete this variable
         info = DirectoryEntry(fileName)
         self.file_in_current.append(info)
+        self.set_progress_to_usage()
 
     def add_file_by_directory_entry(self, file):
         path = Path(file.name)
@@ -361,6 +381,7 @@ class MainFrame(QtWidgets.QFrame):
         # delete this variable
         info = DirectoryEntry(fileName)
         self.file_in_current.append(info)
+        self.set_progress_to_usage()
 
     def add_folder_by_url(self, path):
         try:
@@ -375,8 +396,10 @@ class MainFrame(QtWidgets.QFrame):
             info = DirectoryEntry(folder_name)
             info.is_dir = True
             self.file_in_current.append(info)
+
             #TODO upload under all directory is future plan
 #            self.add_under_directory(path, next_dir)
+            self.set_progress_to_usage()
         except PermissionError:
             pass
 
@@ -386,26 +409,31 @@ class MainFrame(QtWidgets.QFrame):
             last_idx = len(self.model.files)
             row = self.model.add_piece(image, QPoint(last_idx, 0), DirectoryEntry(folder.name, True))
             self.file_in_current.append(folder)
+            self.set_progress_to_usage()
         except PermissionError:
             pass
+
+    def set_progress_to_usage(self):
+        res = unidrive.get_usage()
+        limit = 0
+        used = 0
+        for x in res:
+            used += x['used']
+            limit += x['limit']
+        self.m_menuBar.set_progressbar(used, limit)
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
 
-    #loading = LoadingPage()
-    #loading.move(60, 60)
-    #loading.show()
-
-    splash_pix = QPixmap('images/xd_blue.png')
-    splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-    splash.setMask(splash_pix.mask())
+    splash_pix = QPixmap('images/loading.png')
+    splash_pix_resized = splash_pix.scaled(1000, 800, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+    splash = QSplashScreen(splash_pix_resized, Qt.WindowStaysOnTopHint)
     splash.show()
     app.processEvents()
 
     prjdir = pathlib.Path('.').resolve()
     unidrive = UniDrive(prjdir)
-
     mainUI = MainFrame()
     mainUI.move(60, 60)
     mainUI.show()

@@ -115,6 +115,10 @@ class TitleBar(QtWidgets.QFrame):
 
 class MenuBar(QtWidgets.QFrame):
     drive_remove_signal = QtCore.pyqtSignal(str)
+    to_kilo = 1024
+    to_mega = to_kilo*1024
+    to_giga = to_mega * 1024
+
     def __init__(self, parent=None):
         QtWidgets.QFrame.__init__(self, parent)
         self.setWindowFlags(Qt.FramelessWindowHint)
@@ -151,6 +155,7 @@ class MenuBar(QtWidgets.QFrame):
         # add/remove cloud, setting, arrange button
         self.progressBar = QtWidgets.QProgressBar()
         self.progressBar.setValue(0)  # default
+        self.progressBar.setTextVisible(True)
 
         # set home button
         self.homeBtn = QtWidgets.QToolButton()
@@ -223,8 +228,13 @@ class MenuBar(QtWidgets.QFrame):
         self.drive_remove_signal.emit(name)
 
     # progressbar's color, percent
-    def set_progressbar(self, value):
+    def set_progressbar(self, used, limit):
+        value = 0
+        if limit > 0:
+            value = (used*100)/limit
         self.progressBar.setValue(value)
+        self.progressBar.setFormat("%.2lf GB / %.2lf GB  %.2lf %%" %(used/self.to_giga, limit/self.to_giga, value))
+
         if value > 80:
             self.progressBar.setStyleSheet("""
             QProgressBar {
@@ -365,14 +375,20 @@ class PiecesModel(QAbstractListModel):
             return None
         row = index.row()
         if role == Qt.DisplayRole:
-            length = len(self.files[row].name)
+            selected = self.files[row].name
+            length = len(selected)
             if length >= 8:
-                return self.files[row].name[:8]+".."
-            return self.files[row].name
+                return selected[:8]+".."
+            return selected
         if role == Qt.DecorationRole:
             return QIcon(self.pixmaps[row].scaled(100, 100, Qt.IgnoreAspectRatio, Qt.SmoothTransformation))
         if role == Qt.EditRole:
-            return self.files[row].name
+            selected = self.files[row]
+            if selected.is_dir is False:
+                path = Path(selected.name)
+                fileName = path.stem
+                return fileName
+            return None
         if role == Qt.ToolTipRole:
             return "Press F2 to change File Name"
         if role == Qt.ForegroundRole:
@@ -389,13 +405,16 @@ class PiecesModel(QAbstractListModel):
         if 0 > index.row() or index.row() >= self.rowCount():
             return False
         if role == Qt.EditRole:
-            if self.files[index.row()].name == value:
-                print("not changed")
+            before = self.files[index.row()]
+            path = Path(before.name)
+            fileName = path.stem
+            if fileName == value:
                 return False
-            self.do_rename_signal.emit(self.files[index.row()].name, value)
-            self.files[index.row()].name = value
+            if value == "" or len(value) > 200:
+                return False
+            self.do_rename_signal.emit(before.name, value + path.suffix)
+            self.files[index.row()].name = value + path.suffix
             self.dataChanged.emit(index, index)
-
             return True
         return False
 
@@ -496,11 +515,12 @@ class PiecesModel(QAbstractListModel):
 
 
 class DirectoryView(QListView):
-    del_request_signal = QtCore.pyqtSignal(str, int)
+    del_request_signal = QtCore.pyqtSignal()
     rename_request_signal = QtCore.pyqtSignal(int)
     new_folder_request_signal = QtCore.pyqtSignal()
     download_request_signal = QtCore.pyqtSignal(QModelIndex)
     upload_request_signal = QtCore.pyqtSignal()
+    download_dir_changed_request_signal = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super(DirectoryView, self).__init__(parent)
@@ -543,11 +563,10 @@ class DirectoryView(QListView):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F2:
-            for i in self.selectedIndexes():
-                self.rename_request_signal.emit(i.row())
+            if len(self.selectedIndexes()) == 1:
+                self.rename_request_signal.emit(self.selectedIndexes()[0].row())
         if event.key() == Qt.Key_Delete:
-            for i in self.selectedIndexes():
-                self.del_request_signal.emit(self.model().files[i.row()].name, i.row())
+            self.del_request_signal.emit()
 
     def popup_menu(self, pos):
         selected_items = self.selectedIndexes()
@@ -558,17 +577,20 @@ class DirectoryView(QListView):
         downloadAction = QAction("Download", None)
         renameAction = QAction("Rename", None)
         deleteAction = QAction("Delete", None)
+        setDirectoryAction = QAction("Download Directory", None)
 
         menu.addAction(newFolderAction)
         menu.addSeparator()
         menu.addAction(uploadAction)
-        menu.addAction(downloadAction)
+        if len(selected_items) > 0:
+            menu.addAction(downloadAction)
         menu.addSeparator()
         if len(selected_items) == 1:
             if self.model().files[selected_items[0].row()].is_dir is False:
                 menu.addAction(renameAction)
                 menu.addSeparator()
         menu.addAction(deleteAction)
+        menu.addAction(setDirectoryAction)
 
         action = menu.exec_(self.mapToGlobal(pos))
 
@@ -582,5 +604,6 @@ class DirectoryView(QListView):
         elif action == renameAction:
             self.rename_request_signal.emit(selected_items[0].row())
         elif action == deleteAction:
-            for i in self.selectedIndexes():
-                self.del_request_signal.emit(self.model().files[i.row()].name, i.row())
+            self.del_request_signal.emit()
+        elif action == setDirectoryAction:
+            self.download_dir_changed_request_signal.emit()
