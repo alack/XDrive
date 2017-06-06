@@ -105,7 +105,7 @@ class MainFrame(QtWidgets.QFrame):
         self.download_dir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
 
     def add_folder_action(self):
-        image = QtGui.QPixmap('images/folder.png')
+        image = QtGui.QPixmap('images/exts/folder.png')
         last_idx = len(self.model.files)
         default_folder_name = "newFolder"
         newFolderName = "newFolder"
@@ -305,26 +305,11 @@ class MainFrame(QtWidgets.QFrame):
         self.m_mouse_down = (event.button() == QtCore.Qt.LeftButton)
 
     def ext_to_QPixmap(self, ext):
-        if ext == ".pdf" or ext == ".pptx":
-            image = QtGui.QPixmap('images/pdf.png')
-        elif ext == ".png" or ext == '.jpg' or ext == '.jpeg':
-            image = QtGui.QPixmap('images/png.png')
-        elif ext == '.zip':
-            image = QtGui.QPixmap('images/zip.png')
-        elif ext == '.txt':
-            image = QtGui.QPixmap('images/txt.png')
-        elif ext == '.mp4':
-            image = QtGui.QPixmap('images/mp4.png')
-        elif ext == '.java':
-            image = QtGui.QPixmap('images/java.png')
-        elif ext == '.xlsx' or ext == '.xls':
-            image = QtGui.QPixmap('images/xlsx.png')
-        elif ext == '.py':
-            image = QtGui.QPixmap('images/py.png')
-        elif ext == '.docx' or ext == '.rtf':
-            image = QtGui.QPixmap('images/docx.png')
+        path = 'images/exts/'+ext[1:]+".png"
+        if os.path.exists(path) is False:
+            image = QtGui.QPixmap('images/exts/unknown.png')
         else:
-            image = QtGui.QPixmap('images/unknown.png')
+            image = QtGui.QPixmap(path)
         return image
 
     def add_file_by_url(self, path):
@@ -355,7 +340,7 @@ class MainFrame(QtWidgets.QFrame):
         try:
             path = Path(path)
             folder_name = path.stem
-            image = QtGui.QPixmap('images/folder.png')
+            image = QtGui.QPixmap('images/exts/folder.png')
             last_idx = len(self.model.files)
             current = VirtualEntry(DirectoryEntry(folder_name, True))
             self.model.add_piece(image, QtCore.QPoint(last_idx, 0), current)
@@ -370,7 +355,7 @@ class MainFrame(QtWidgets.QFrame):
 
     def add_folder_by_directory_entry(self, folder):
         try:
-            image = QtGui.QPixmap('images/folder.png')
+            image = QtGui.QPixmap('images/exts/folder.png')
             last_idx = len(self.model.files)
             self.model.add_piece(image, QtCore.QPoint(last_idx, 0), folder)
             self.file_in_current.append(folder)
@@ -390,19 +375,19 @@ class MainFrame(QtWidgets.QFrame):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-
+    """
     splash_pix = QtGui.QPixmap('images/loading.png')
     splash_pix_resized = splash_pix.scaled(1000, 800, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)
     splash = QtWidgets.QSplashScreen(splash_pix_resized, QtCore.Qt.WindowStaysOnTopHint)
     splash.show()
     app.processEvents()
-
+    """
     prjdir = Path('.').resolve()
     unidrive = UniDrive(prjdir)
 
     mainUI = MainFrame()
     mainUI.move(60, 60)
     mainUI.show()
-    splash.finish(mainUI)
+    #splash.finish(mainUI)
 
     app.exec_()

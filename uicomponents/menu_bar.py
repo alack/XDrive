@@ -47,24 +47,24 @@ class MenuBar(QtWidgets.QFrame):
 
         # set home button
         self.homeBtn = QtWidgets.QToolButton()
-        self.homeBtn.setIcon(QtGui.QIcon('images/home.png'))
+        self.homeBtn.setIcon(QtGui.QIcon('images/menuIcons/home.png'))
         #self.homeBtn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         #self.homeBtn.setText("home!")
 
         # set folder open btn
         self.folderOpenBtn = QtWidgets.QToolButton()
-        self.folderOpenBtn.setIcon(QtGui.QIcon('images/folder_open.png'))
+        self.folderOpenBtn.setIcon(QtGui.QIcon('images/menuIcons/folder_open.png'))
 
         # set add folder button
         self.addFolderBtn = QtWidgets.QToolButton()
-        self.addFolderBtn.setIcon(QtGui.QIcon('images/add_folder_blue.png'))
+        self.addFolderBtn.setIcon(QtGui.QIcon('images/menuIcons/add_folder_blue.png'))
 
         # add cloud menu
         self.add_menu_setting()
 
         # add cloud menu button
         self.addCloudBtn = QtWidgets.QPushButton()
-        self.addCloudBtn.setIcon(QtGui.QIcon('images/add_cloud.png'))
+        self.addCloudBtn.setIcon(QtGui.QIcon('images/menuIcons/add_cloud.png'))
         self.addCloudBtn.setMenu(self.addMenu)
 
         # remove cloud setting
@@ -72,7 +72,7 @@ class MenuBar(QtWidgets.QFrame):
 
         # remove cloud menu button
         self.removeCloudBtn = QtWidgets.QPushButton()
-        self.removeCloudBtn.setIcon(QtGui.QIcon('images/remove_cloud.png'))
+        self.removeCloudBtn.setIcon(QtGui.QIcon('images/menuIcons/remove_cloud.png'))
         self.removeCloudBtn.setMenu(self.removeMenu)
 
         self.layout = QtWidgets.QHBoxLayout(self)
@@ -92,9 +92,9 @@ class MenuBar(QtWidgets.QFrame):
     def add_menu_setting(self):
         self.addMenu = QtWidgets.QMenu()
         # set add action
-        self.googleAddAction = QtWidgets.QAction(QtGui.QIcon('images/google_small.png'), 'GoogleDrive', self)
-        self.boxAddAction = QtWidgets.QAction(QtGui.QIcon('images/box.png'), "Box", self)
-        self.dropboxAddAction = QtWidgets.QAction(QtGui.QIcon('images/dropbox.png'), "Dropbox", self)
+        self.googleAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/google_small.png'), 'GoogleDrive', self)
+        self.boxAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/box.png'), "Box", self)
+        self.dropboxAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/dropbox.png'), "Dropbox", self)
 
         self.addMenu.addAction(self.googleAddAction)
         self.addMenu.addAction(self.boxAddAction)

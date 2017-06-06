@@ -1,4 +1,4 @@
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 from pathlib import Path
 
 
@@ -25,7 +25,7 @@ class PiecesModel(QtCore.QAbstractListModel):
         if role == QtCore.Qt.DisplayRole:
             selected = self.files[row].name
             length = len(selected)
-            if length >= 8:
+            if length > 8:
                 return selected[:8]+".."
             return selected
         if role == QtCore.Qt.DecorationRole:
