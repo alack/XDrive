@@ -53,7 +53,10 @@ class MenuBar(QtWidgets.QFrame):
 
         # set add folder button
         self.addFolderBtn = QtWidgets.QToolButton()
-        self.addFolderBtn.setIcon(QtGui.QIcon('images/menuIcons/add_folder_blue.png'))
+        self.addFolderBtn.setIcon(QtGui.QIcon('images/menuIcons/add_folder.png'))
+
+        self.refreshBtn = QtWidgets.QToolButton()
+        self.refreshBtn.setIcon(QtGui.QIcon('images/menuIcons/refresh.png'))
 
         # add cloud menu
         self.add_menu_setting()
@@ -74,6 +77,7 @@ class MenuBar(QtWidgets.QFrame):
         self.layout = QtWidgets.QHBoxLayout(self)
         self.layout.addWidget(self.progressBar)
         self.layout.addWidget(self.homeBtn)
+        self.layout.addWidget(self.refreshBtn)
         self.layout.addWidget(self.addFolderBtn)
         self.layout.addWidget(self.addCloudBtn)
         self.layout.addWidget(self.removeCloudBtn)
@@ -111,7 +115,12 @@ class MenuBar(QtWidgets.QFrame):
         self.drive_remove_signal.emit(name)
 
     # progressbar's color, percent
-    def set_progressbar(self, used, limit):
+    def set_progressbar(self, res):
+        limit = 0
+        used = 0
+        for x in res:
+            used += x['used']
+            limit += x['limit']
         value = 0
         if limit > 0:
             value = (used*100)/limit

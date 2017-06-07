@@ -7,6 +7,7 @@ class DirectoryView(QtWidgets.QListView):
     new_folder_request_signal = QtCore.pyqtSignal()
     download_request_signal = QtCore.pyqtSignal(QtCore.QModelIndex)
     upload_request_signal = QtCore.pyqtSignal()
+    refresh_signal = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super(DirectoryView, self).__init__(parent)
@@ -67,7 +68,7 @@ class DirectoryView(QtWidgets.QListView):
         downloadAction = QtWidgets.QAction("Download", None)
         renameAction = QtWidgets.QAction("Rename", None)
         deleteAction = QtWidgets.QAction("Delete", None)
-        setDirectoryAction = QtWidgets.QAction("Download Directory", None)
+        refreshAction = QtWidgets.QAction("Refresh", None)
 
         menu.addAction(newFolderAction)
         menu.addSeparator()
@@ -80,7 +81,7 @@ class DirectoryView(QtWidgets.QListView):
                 menu.addAction(renameAction)
                 menu.addSeparator()
         menu.addAction(deleteAction)
-        menu.addAction(setDirectoryAction)
+        menu.addAction(refreshAction)
 
         action = menu.exec_(self.mapToGlobal(pos))
 
@@ -95,3 +96,5 @@ class DirectoryView(QtWidgets.QListView):
             self.rename_request_signal.emit(selected_items[0].row())
         elif action == deleteAction:
             self.del_request_signal.emit()
+        elif action == refreshAction:
+            self.refresh_signal.emit()

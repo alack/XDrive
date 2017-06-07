@@ -40,6 +40,7 @@ class MainFrame(QtWidgets.QFrame):
         self.m_menuBar.boxAddAction.triggered.connect(self.box_clicked)
         self.m_menuBar.dropboxAddAction.triggered.connect(self.dropbox_clicked)
         self.m_menuBar.homeBtn.clicked.connect(self.load_files_from_root)
+        self.m_menuBar.refreshBtn.clicked.connect(self.refresh_directory)
 
         self.m_statusBar = StatusBar()
 
@@ -51,6 +52,7 @@ class MainFrame(QtWidgets.QFrame):
         self.m_listview.new_folder_request_signal.connect(self.add_folder_action)
         self.m_listview.download_request_signal.connect(self.list_view_double_clicked)
         self.m_listview.upload_request_signal.connect(self.listview_upload_clicked)
+        self.m_listview.refresh_signal.connect(self.refresh_directory)
 
         self.model = PiecesModel()
         self.model.do_rename_signal.connect(self.do_rename)
@@ -73,6 +75,14 @@ class MainFrame(QtWidgets.QFrame):
         self.load_data_from_store_list()
         self.load_files_from_root()
 
+    def refresh_directory(self):
+        next_list = VirtualEntry.list_to_virtual(unidrive.get_list(self.current_dir))
+        self.file_in_current = next_list[:]
+        self.model.clear()
+        self.m_listview.clear()
+        self.m_listview.set_directory(next_list)
+        self.m_statusBar.set_status_ok("Refreshed")
+
     def move_to_folder(self, next_folder: str):
         idx = self.m_listview.selectedIndexes()[0]
         filename = self.model.files[idx.row()].name
@@ -82,7 +92,7 @@ class MainFrame(QtWidgets.QFrame):
     def listview_upload_clicked(self):
         files = QtWidgets.QFileDialog.getOpenFileNames()
         for path in files[0]:
-            self.download_progress(path)
+            self.upload_progress(path)
 
     def drive_remove_pressed(self, selected):
         unidrive.remove_store(selected)
@@ -173,13 +183,13 @@ class MainFrame(QtWidgets.QFrame):
     def dir_selected(self, name, is_from_director_bar):
         next_list = VirtualEntry.list_to_virtual(unidrive.get_list(self.current_dir))
         self.file_in_current = next_list[:]
-        self.model.clear()
+
         if is_from_director_bar is False:
             if self.current_dir == '/':
                 self.m_directoryBar.set_root_button()
             else:
                 self.m_directoryBar.add_under_directory_button(name)
-        self.m_listview.clear()
+        self.model.clear()
         if len(next_list) != 0:
             self.m_listview.set_directory(next_list)
 
@@ -274,13 +284,14 @@ class MainFrame(QtWidgets.QFrame):
                 self.m_statusBar.set_status_wait(str(upload_list[0].toLocalFile())+" is uploading")
             for url in upload_list:
                 path = str(Path(url.toLocalFile()))
-                self.download_progress(path)
+                self.upload_progress(path)
         else:
             self.m_listview.highlightedRect = QtCore.QRect()
             event.ignore()
 
-    def download_progress(self, path):
+    def upload_progress(self, path):
             cur_path = Path(path)
+            self.m_statusBar.set_status_wait("Uploading....")
             if cur_path.is_dir():
                 unidrive.make_directory(self.current_dir, cur_path.stem)
                 self.add_folder_by_url(cur_path)
@@ -354,9 +365,8 @@ class MainFrame(QtWidgets.QFrame):
             last_idx = len(self.model.files)
             current = VirtualEntry(DirectoryEntry(folder_name, True))
             self.model.add_piece(image, QtCore.QPoint(last_idx, 0), current)
-
             self.file_in_current.append(current)
-
+            self.m_statusBar.set_status_ok(folder_name+" is uploaded")
             #TODO upload under all directory is future plan
             #self.add_under_directory(path, next_dir)
             self.set_progress_to_usage()
@@ -375,19 +385,14 @@ class MainFrame(QtWidgets.QFrame):
 
     def set_progress_to_usage(self):
         res = unidrive.get_usage()
-        limit = 0
-        used = 0
-        for x in res:
-            used += x['used']
-            limit += x['limit']
-        self.m_menuBar.set_progressbar(used, limit)
+        self.m_menuBar.set_progressbar(res)
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
 
     splash_pix = QtGui.QPixmap('images/loading.png')
-    splash_pix_resized = splash_pix.scaled(1000, 800, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)
+    splash_pix_resized = splash_pix.scaled(400, 400, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)
     splash = QtWidgets.QSplashScreen(splash_pix_resized, QtCore.Qt.WindowStaysOnTopHint)
     splash.show()
     app.processEvents()
