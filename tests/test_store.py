@@ -3,11 +3,9 @@ import unittest
 import pathlib
 from exceptions import *
 from tokenbox import Tokenbox
-from store.enums import StoreSuffixes
 
 
 class BaseTestStoreMethods:
-
     class TestStoreMethods(unittest.TestCase):
         store_name = ''
         store_class = None
@@ -93,7 +91,7 @@ class BaseTestStoreMethods:
             # try to download after removal
             self.store.remove(test_path)
             with self.assertRaises(NoEntryError):
-                sample1_data = self.store.download_file(test_path)
+                self.store.download_file(test_path)
 
         def test_delete_directory(self):
             # entries before upload samples directory
@@ -135,26 +133,12 @@ class BaseTestStoreMethods:
         def test_download_file_not_exists(self):
             test_path = pathlib.PurePath('/sample1')
             with self.assertRaises(NoEntryError):
-                data = self.store.download_file(test_path)
+                self.store.download_file(test_path)
 
         def test_get_list_on_invalid_path(self):
             test_samples_dir = pathlib.PurePath('/samples')
             with self.assertRaises(NoEntryError):
-                entries = self.store.get_list(test_samples_dir)
-
-        def test_updown_internal_only_name(self):
-            test_path = pathlib.PurePath('/sample')
-            with open(self.project_dir / 'tests' / 'samples' / 'sample1', 'rb') as testfile:
-                test_data = testfile.read()
-            # '.unidrive_chunk' is suffix for internal chunk file
-            self.store.upload_file(test_path.with_suffix(StoreSuffixes.CHUNK_FILE.value), test_data)
-            ret = self.store.download_file(test_path.with_suffix(StoreSuffixes.CHUNK_FILE.value))
-            self.assertEqual(test_data, ret)
-
-            # '.unidrive_recipe' is suffix for internal chunk file
-            self.store.upload_file(test_path.with_suffix(StoreSuffixes.RECIPE_FILE.value), test_data)
-            ret = self.store.download_file(test_path.with_suffix(StoreSuffixes.RECIPE_FILE.value))
-            self.assertEqual(test_data, ret)
+                self.store.get_list(test_samples_dir)
 
         def test_rename(self):
             test_path = pathlib.PurePath('/sample1')

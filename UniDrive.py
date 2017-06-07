@@ -7,8 +7,11 @@ from pathlib import Path, PurePath
 import json
 import Locator
 
+
 class UniDrive:
-    __chunking_threshold = 4194304 # 4 * 1024 * 1024 byte
+    MB = 1024*1024
+    __chunking_threshold = 4*MB  # 4 * 1024 * 1024 byte
+
     def __init__(self, app_dir):
         self.app_dir = Path(app_dir)
         if self.app_dir.is_dir() is False:
@@ -30,12 +33,9 @@ class UniDrive:
             self.stores[store['name']] = StoreFactory.create_store(store['type'], self.__config, store['name'],
                                                                    self.__tokenbox)
 
-    def get_store_list(self):
-        return self.__store_list
-
     def __update_store_list(self):
         with open(self.app_dir/'store_list.json', 'w') as conf:
-            conf.write(json.dumps({'stores' : self.__store_list}, indent=4))
+            conf.write(json.dumps({'stores': self.__store_list}, indent=4))
 
     def register_store(self, store_type, name):
         if name in self.stores:
@@ -73,81 +73,172 @@ class UniDrive:
             res.append(x)
         return res
 
+    @staticmethod
+    def get_list_filter(future):
+        ret = []
+        for entry in future.result():
+            if entry.is_recipe:
+                strip = PurePath(entry.name).stem
+                ret.append(DirectoryEntry(strip))
+            elif not entry.is_chunk:
+                ret.append(entry)
+        return ret
+
     def get_list(self, path: str) -> List[DirectoryEntry]:
         path = PurePath(path)
-        list_filter = set()
+        dir_filter = set()
         results = []
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = []
             for name, store in self.stores.items():
                 futures.append(executor.submit(store.get_list, path))
+            futures2 = []
             for future in futures:
+                futures2.append(executor.submit(self.get_list_filter, future))
+
+            for future in futures2:
                 for entry in future.result():
-                    if entry.name not in list_filter:
-                        list_filter.add(entry.name)
+                    if entry.is_dir:
+                        if entry.name not in dir_filter:
+                            dir_filter.add(entry.name)
+                            results.append(entry)
+                    else:
                         results.append(entry)
-        filtered = [x for x in results if not x.is_chunk and not x.is_recipe]
-        return filtered
+        return results
 
     def upload_file(self, path: str, data) -> bool:
         path = PurePath(path)
-        # need_chunking = (len(data) > self.__chunking_threshold)
-        need_chunking = False
+        parent_path = path.parent
+        file_name = path.name
+        need_chunking = (len(data) > self.__chunking_threshold)
         if need_chunking:
-            pass
+            try:
+                dest_name = Locator.locate(path, self.__store_list)
+                self.stores[dest_name].download_file(path)
+            except NoEntryError:
+                idx = 0
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    futures = []
+                    off = 0
+                    while off < len(data):
+                        if (len(data) - off) < (4 * self.MB):
+                            sz = len(data) - off
+                        else:
+                            sz = 4 * self.MB
+                        chunk_path = parent_path / (file_name + '.{0}'.format(idx) + StoreSuffixes.CHUNK_FILE.value)
+                        chunk_dest = Locator.locate(chunk_path, self.__store_list)
+                        futures.append(executor.submit(self.stores[chunk_dest].upload_file,
+                                                       chunk_path, data[off:(off+sz)]))
+                        off = off + sz
+                        idx = idx + 1
+
+                    for future in futures:
+                        if future.result() is False:
+                            return False
+                recipe_path = parent_path / (file_name + StoreSuffixes.RECIPE_FILE.value)
+                recipe_dest = Locator.locate(recipe_path, self.__store_list)
+                recipe = str.encode(json.dumps({'chunks': idx}))
+                self.stores[recipe_dest].upload_file(recipe_path, recipe)
+            else:
+                raise DuplicateEntryError('small file is already there')
         else:
-            dest_name = Locator.map(path, self.__store_list)
-            self.stores[dest_name].upload_file(path, data)
+            try:
+                recipe_path = parent_path / (file_name + StoreSuffixes.RECIPE_FILE.value)
+                recipe_dest = Locator.locate(recipe_path, self.__store_list)
+                self.stores[recipe_dest].download_file(recipe_path)
+            except NoEntryError:
+                dest_name = Locator.locate(path, self.__store_list)
+                self.stores[dest_name].upload_file(path, data)
+            else:
+                raise DuplicateEntryError('recipe is already there')
         return True
 
+    def download_maybe_chunked(self, path):
+        parent_path = path.parent
+        file_name = path.name
+        recipe_path = parent_path / (file_name + StoreSuffixes.RECIPE_FILE.value)
+        dest = Locator.locate(recipe_path, self.__store_list)
+        recipe = self.stores[dest].download_file(recipe_path)
+        chunks = json.loads(recipe.decode())['chunks']
+        data = bytearray()
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = []
+            for idx in range(chunks):
+                chunk_path = parent_path / (file_name + '.{0}'.format(idx) + StoreSuffixes.CHUNK_FILE.value)
+                dest = Locator.locate(chunk_path, self.__store_list)
+                futures.append(executor.submit(self.stores[dest].download_file, chunk_path))
+            for idx in range(chunks):
+                data.extend(futures[idx].result())
+        return data
+
     def download_file(self, path: str) -> bytearray:
-        data = None
         path = PurePath(path)
-        for name, store in self.stores.items():
-            try:
-                data = store.download_file(path)
-            except NoEntryError:
-                pass
-            else:
-                break
-        if data is None:
-            raise NoEntryError('data is None')
-        else:
-            return data
+        dest_name = Locator.locate(path, self.__store_list)
+        try:
+            data = self.stores[dest_name].download_file(path)
+        except NoEntryError:
+            data = self.download_maybe_chunked(path)
+
+        return data
 
     def make_directory(self, path: str, directory_name: str) -> bool:
         path = PurePath(path)
         for name, store in self.stores.items():
-            try:
-                store.make_dir(path, directory_name)
-            except BaseStoreException:
-                return False
-
+            store.make_dir(path, directory_name)
         return True
 
     def __remove(self, path: str) -> bool:
-        path = Path(path)
-        for name, store in self.stores.items():
-            try:
-                store.remove(path)
-            except BaseStoreException:
-                pass
+        path = PurePath(path)
+        dest = Locator.locate(path, self.__store_list)
+        self.stores[dest].remove(path)
         return True
 
-    def __remove_chunked(self,path) -> bool:
-        return False
+    def __remove_chunked(self, path: str) -> bool:
+        path = PurePath(path)
+        parent_path = path.parent
+        file_name = path.name
+        recipe_path = parent_path / (file_name + StoreSuffixes.RECIPE_FILE.value)
+        recipe_dest = Locator.locate(recipe_path, self.__store_list)
+        recipe = self.stores[recipe_dest].download_file(recipe_path)
+        chunks = json.loads(recipe.decode())['chunks']
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = []
+            for idx in range(chunks):
+                chunk_path = parent_path / (file_name + '.{0}'.format(idx) + StoreSuffixes.CHUNK_FILE.value)
+                chunk_dest = Locator.locate(chunk_path, self.__store_list)
+                futures.append(executor.submit(self.stores[chunk_dest].remove, chunk_path))
+        self.stores[recipe_dest].remove(recipe_path)
+        return True
 
     def remove_file(self, path: str) -> bool:
         try:
             return self.__remove(path)
-        except NoEntryError as e:
+        except NoEntryError:
             return self.__remove_chunked(path)
 
     def remove_directory(self, path: str) -> bool:
-        return self.__remove(path)
+        path = PurePath(path)
+        success = True
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = []
+            for name, store in self.stores.items():
+                futures.append(executor.submit(store.remove, path))
+            for future in futures:
+                try:
+                    future.result()
+
+                except BaseStoreException:
+                    success = False
+        if success is False:
+            raise BaseStoreException('rm dir error')
+        else:
+            return success
 
     def rename(self, path, new_path):
         data = self.download_file(path)
         self.upload_file(new_path, data)
         self.remove_file(path)
         return True
+
+    def get_store_list(self):
+        return self.__store_list[0:]

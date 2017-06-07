@@ -5,6 +5,7 @@ from typing import Dict
 class Tokenbox:
     tokenfile = ""
     tokens = None
+
     def __init__(self, path):
         self.tokenfile = path
         try:

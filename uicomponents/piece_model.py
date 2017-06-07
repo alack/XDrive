@@ -4,6 +4,7 @@ from pathlib import Path
 
 class PiecesModel(QtCore.QAbstractListModel):
     do_rename_signal = QtCore.pyqtSignal(str, str)
+    drop_piece_signal = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None):
         super(PiecesModel, self).__init__(parent)
@@ -29,7 +30,8 @@ class PiecesModel(QtCore.QAbstractListModel):
                 return selected[:8]+".."
             return selected
         if role == QtCore.Qt.DecorationRole:
-            return QtGui.QIcon(self.pixmaps[row].scaled(100, 100, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation))
+            return QtGui.QIcon(
+                self.pixmaps[row].scaled(100, 100, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation))
         if role == QtCore.Qt.EditRole:
             selected = self.files[row]
             if selected.is_dir is False:
@@ -86,24 +88,6 @@ class PiecesModel(QtCore.QAbstractListModel):
         return (QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled |
                 QtCore.Qt.ItemIsDropEnabled | QtCore.Qt.ItemIsEnabled)
 
-    def removeRows(self, row, count, parent):
-        if parent.isValid():
-            return False
-
-        if row >= len(self.pixmaps) or row + count <= 0:
-            return False
-
-        beginRow = max(0, row)
-        endRow = min(row + count - 1, len(self.pixmaps) - 1)
-
-        self.beginRemoveRows(parent, beginRow, endRow)
-
-        del self.pixmaps[beginRow:endRow + 1]
-        del self.locations[beginRow:endRow + 1]
-        del self.files[beginRow:endRow + 1]
-        self.endRemoveRows()
-        return True
-
     def mimeTypes(self):
         return ['image/x-puzzle-piece']
 
@@ -123,35 +107,12 @@ class PiecesModel(QtCore.QAbstractListModel):
     def dropMimeData(self, data, action, row, column, parent):
         if not data.hasFormat('image/x-puzzle-piece'):
             return False
-
         if action == QtCore.Qt.IgnoreAction:
             return True
-
         if column > 0:
             return False
-
-        if not parent.isValid():
-            if row < 0:
-                endRow = len(self.pixmaps)
-            else:
-                endRow = min(row, len(self.pixmaps))
-        else:
-            endRow = parent.row()
-
-        encodedData = data.data('image/x-puzzle-piece')
-        stream = QtCore.QDataStream(encodedData, QtCore.QIODevice.ReadOnly)
-
-        while not stream.atEnd():
-            pixmap = QtGui.QPixmap()
-            location = QtGui.QPoint()
-            stream >> pixmap >> location
-
-            self.beginInsertRows(QtCore.QModelIndex(), endRow, endRow)
-            self.pixmaps.insert(endRow, pixmap)
-            self.locations.insert(endRow, location)
-            self.endInsertRows()
-
-            endRow += 1
+        if self.files[parent.row()].is_dir:
+            self.drop_piece_signal.emit(self.files[parent.row()].name)
 
         return True
 
@@ -160,3 +121,4 @@ class PiecesModel(QtCore.QAbstractListModel):
 
     def supportedDropActions(self):
         return QtCore.Qt.CopyAction | QtCore.Qt.MoveAction
+

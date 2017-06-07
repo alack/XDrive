@@ -1,6 +1,7 @@
 import unittest
-import pathlib
 import webbrowser
+from pathlib import Path, PurePath
+from exceptions import *
 from UniDrive import UniDrive
 
 
@@ -10,7 +11,7 @@ class TestUniDrive(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.project_dir = (pathlib.Path(__file__).resolve()).parents[1]
+        cls.project_dir = (Path(__file__).resolve()).parents[1]
         cls.sample_dir = cls.project_dir / 'tests' / 'samples'
         unidrive = UniDrive(cls.project_dir)
         # google
@@ -42,12 +43,25 @@ class TestUniDrive(unittest.TestCase):
 
     def tearDown(self):
         res = self.unidrive.get_list('/')
-        for entry in res:
-            if entry.is_dir:
-                self.unidrive.remove_directory('/{0}'.format(entry.name))
-            else:
-                self.unidrive.remove_file('/{0}'.format(entry.name))
+        try:
+            for entry in res:
+                if entry.is_dir:
+                    self.unidrive.remove_directory('/{0}'.format(entry.name))
+                else:
+                    self.unidrive.remove_file('/{0}'.format(entry.name))
+        except BaseStoreException:
+            for name, store in self.unidrive.stores.items():
+                ls = store.get_list(PurePath('/'))
+                for entry in ls:
+                    store.remove(PurePath('/{0}'.format(entry.name)))
+            raise BaseStoreException('Error occurred in cleaning unidrive but we cleaned anyway.')
         del self.unidrive
+
+    def test_store_list(self):
+        test = [{'type': 'GoogleDriveStore', 'name': 'test-googledrive'},
+                {'type': 'DropboxStore', 'name': 'test-dropbox'}]
+        res = self.unidrive.get_store_list()
+        self.assertEqual(test, res)
 
     def test_upload(self):
         test_path = '/sample1'
@@ -131,3 +145,33 @@ class TestUniDrive(unittest.TestCase):
         self.assertTrue(self.unidrive.remove_directory('/temp'))
         self.assertTrue(self.unidrive.remove_file('/sample1'))
         self.assertTrue(self.unidrive.remove_file('/sample_large'))
+
+    def test_duplicate_file_name(self):
+        test_path = '/sample'
+        with open(self.sample_dir / 'sample_large', 'rb') as f:
+            big_file = f.read()
+        with open(self.sample_dir / 'sample1', 'rb') as f:
+            small_file = f.read()
+
+        self.unidrive.upload_file(test_path, big_file)
+        with self.assertRaises(DuplicateEntryError):
+            self.unidrive.upload_file(test_path, big_file)
+
+        with self.assertRaises(DuplicateEntryError):
+            self.unidrive.upload_file(test_path, small_file)
+        self.unidrive.remove_file(test_path)
+
+        self.unidrive.upload_file(test_path, small_file)
+        with self.assertRaises(DuplicateEntryError):
+            self.unidrive.upload_file(test_path, big_file)
+
+        with self.assertRaises(DuplicateEntryError):
+            self.unidrive.upload_file(test_path, small_file)
+        self.unidrive.remove_file(test_path)
+
+    def test_duplicate_directory_name(self):
+        test_path = '/'
+        test_dir_name = 'samples'
+        self.unidrive.make_directory(test_path, test_dir_name)
+        with self.assertRaises(DuplicateEntryError):
+            self.unidrive.make_directory(test_path, test_dir_name)

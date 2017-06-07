@@ -4,7 +4,7 @@ from store.enums import StoreSuffixes
 
 # TODO class for directory, file and chunk
 class DirectoryEntry:
-    def __init__(self, name: str, is_directory = False):
+    def __init__(self, name: str, is_directory=False):
         self.__node_name = name
         self.__is_dir = is_directory
         self.__is_chunk = False

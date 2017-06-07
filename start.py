@@ -1,10 +1,11 @@
-import pathlib
 import webbrowser
+from pathlib import Path, PurePath
 from UniDrive import UniDrive
 from exceptions import *
 
-def prepareUnidrive():
-    prjdir = pathlib.Path('.').resolve()
+
+def prepare_unidrive():
+    prjdir = Path('.').resolve()
     unidrive = UniDrive(prjdir)
     # google
     try:
@@ -12,9 +13,9 @@ def prepareUnidrive():
         webbrowser.open_new(auth_url)
         res = input('response url for test-googledrive :')
         if unidrive.activate_store('test-googledrive', res):
-            print ('success test-googledrive')
+            print('success test-googledrive')
         else:
-            print ('fail test-googledrive')
+            print('fail test-googledrive')
     except Exception:
         print('test-googledrive is already registered')
     # dropbox
@@ -30,6 +31,7 @@ def prepareUnidrive():
         print('test-dropbox is already registered')
     return unidrive
 
+
 def run(unidrive):
     while True:
         cmd = input('>> ')
@@ -39,11 +41,18 @@ def run(unidrive):
         if cmd == 'q':
             print('quit!')
             break
+
         if cmd == 'ls':
-            if len(args) != 1:
-                print('please check arguments. ls [path]')
+            if len(args) == 1:
+                detail = False
+                arg = args[0]
+            elif len(args) == 2 and args[0] == '-v':
+                detail = True
+                arg = args[1]
+            else:
+                print('please check arguments. ls [-v] path')
                 continue
-            arg = args[0]
+
             try:
                 res = unidrive.get_list(arg)
             except BaseStoreException as e:
@@ -54,13 +63,25 @@ def run(unidrive):
                         print('[{0}]'.format(entry.name))
                     else:
                         print(entry.name)
+
+                if detail is True:
+                    for name, store in unidrive.stores.items():
+                        print('store name: ', name)
+                        ls = store.get_list(PurePath(arg))
+                        for entry in ls:
+                            entry_line = 'name: {0} '.format(entry.name)
+                            if entry.is_recipe:
+                                entry_line += '[recipe]'
+                            if entry.is_chunk:
+                                entry_line += '[chunk]'
+                            print(entry_line)
                 continue
 
         if cmd == 'up':
             if len(args) != 2:
                 print('please check arguments. up [from] [to]')
                 continue
-            src_path = pathlib.Path(args[0])
+            src_path = Path(args[0])
             if src_path.is_file() is False:
                 print('file does not exists')
                 continue
@@ -70,9 +91,9 @@ def run(unidrive):
             try:
                 unidrive.upload_file(dest_path, src_data)
             except BaseStoreException as e:
-                print ('error :', e.message)
+                print('error :', e.message)
             else:
-                print ('Done.')
+                print('Done.')
                 continue
 
         if cmd == 'down':
@@ -80,8 +101,8 @@ def run(unidrive):
                 print('please check arguments. down [from] [to]')
                 continue
             src_path = args[0]
-            dest_path = pathlib.Path(args[1])
-            if dest_path.exists() is True or (dest_path.parent).is_dir() is False:
+            dest_path = Path(args[1])
+            if dest_path.exists() is True or dest_path.parent.is_dir() is False:
                 print('please check destination path :', dest_path)
                 continue
             try:
@@ -121,6 +142,19 @@ def run(unidrive):
                 print('Done.')
                 continue
 
+        if cmd == 'rmdir':
+            if len(args) != 1:
+                print('please check arguments. rm [path]')
+                continue
+            dest_path = args[0]
+            try:
+                unidrive.remove_directory(dest_path)
+            except BaseStoreException as e:
+                print('error :', e.message)
+            else:
+                print('Done.')
+                continue
+
         if cmd == 'df':
             res = unidrive.get_usage()
             for x in res:
@@ -128,6 +162,7 @@ def run(unidrive):
 
         print('Command does not exist')
 
+
 if __name__ == '__main__':
-    unidrive = prepareUnidrive()
-    run(unidrive)
+    tmp = prepare_unidrive()
+    run(tmp)

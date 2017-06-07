@@ -12,7 +12,7 @@ class TestDirectoryEntry(unittest.TestCase):
         self.assertFalse(den.is_recipe)
 
     def test_chunk_file_name(self):
-        test_name = 'sample.unidrive_chunk'
+        test_name = 'sample.0.unidrive_chunk'
         den = DirectoryEntry(test_name)
         self.assertEqual(test_name, den.name)
         self.assertFalse(den.is_dir)

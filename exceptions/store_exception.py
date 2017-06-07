@@ -22,6 +22,7 @@ class UnauthorizedRequestError(BaseStoreException):
     def __init__(self, message):
         self.message = message
 
+
 class InvalidEntryNameError(BaseStoreException):
     def __init__(self, message):
         self.message = message

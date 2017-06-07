@@ -5,8 +5,8 @@ from requests_oauthlib import OAuth2Session
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.encoders import encode_noop
-from . store import Store
-from . directory_entry import DirectoryEntry
+from .store import Store
+from .directory_entry import DirectoryEntry
 from exceptions import *
 from tokenbox import Tokenbox
 
@@ -14,6 +14,7 @@ from tokenbox import Tokenbox
 class GoogleDriveStore(Store):
     __root_id = 'appDataFolder'
     __file_url = "https://www.googleapis.com/drive/v3/files/"
+
     # __token_info_url = "https://www.googleapis.com/oauth2/v3/tokeninfo"
 
     def __init__(self, global_config: Dict, name: str, tokenbox: Tokenbox):
@@ -46,7 +47,7 @@ class GoogleDriveStore(Store):
 
     def get_usage(self):
         response = json.loads(self.session.get(url='https://www.googleapis.com/drive/v3/about',
-                                               params={'fields':'storageQuota'}).content)
+                                               params={'fields': 'storageQuota'}).content)
         return {'used': int(response['storageQuota']['usage']),
                 'limit': int(response['storageQuota']['limit'])}
 
@@ -66,7 +67,7 @@ class GoogleDriveStore(Store):
             'q': "'{0}' in parents".format(parent_id)
         }
         if filename:
-            params['q'] = params['q'] + " and name = '{0}'".format(filename.replace("'",r"\'"))
+            params['q'] = params['q'] + " and name = '{0}'".format(filename.replace("'", r"\'"))
         results = []
         while True:
             response = self.session.get(GoogleDriveStore.__file_url, params=params)
@@ -86,7 +87,7 @@ class GoogleDriveStore(Store):
 
     def get_file_id(self, path: PurePath):
         parent_id = GoogleDriveStore.__root_id
-        for filename  in path.parts[1:]:
+        for filename in path.parts[1:]:
             search = self.search_files_with_parent_id(parent_id, filename)
             if not search:
                 raise NoEntryError('path is not valid')
@@ -123,7 +124,7 @@ class GoogleDriveStore(Store):
                 'parents': [parent_id]
             }
             # TODO handle upload failure
-            res = self.__upload_file(metadata, data)
+            self.__upload_file(metadata, data)
             return True
         else:
             raise DuplicateEntryError('Duplicate path')
@@ -137,7 +138,7 @@ class GoogleDriveStore(Store):
         related.attach(dd)
         body = related.as_string().split('\n\n', 1)[1]
         r = self.session.post(self.upload_url, data=body,
-                              headers={'Content-Type':'multipart/related; boundary=separator'},
+                              headers={'Content-Type': 'multipart/related; boundary=separator'},
                               params={'uploadType': 'multipart'})
         # TODO raise proper exception
         r.raise_for_status()
@@ -162,9 +163,9 @@ class GoogleDriveStore(Store):
         except NoEntryError:
             parent_id = self.get_file_id(path)
             metadata = {
-                'parents' : [parent_id],
-                'name' : name,
-                'mimeType' : 'application/vnd.google-apps.folder'
+                'parents': [parent_id],
+                'name': name,
+                'mimeType': 'application/vnd.google-apps.folder'
             }
             response = self.session.post(GoogleDriveStore.__file_url, data=json.dumps(metadata),
                                          headers={'Content-Type': 'application/json'})

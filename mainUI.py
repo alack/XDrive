@@ -31,21 +31,20 @@ class MainFrame(QtWidgets.QFrame):
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
         self.setMinimumSize(800, 500)
         self.setAcceptDrops(True)
-
         self.m_titleBar = TitleBar()
         self.m_menuBar = MenuBar()
         self.m_menuBar.addFolderBtn.clicked.connect(self.add_folder_action)
-        self.m_menuBar.folderOpenBtn.clicked.connect(self.set_download_directory_action)
         self.m_menuBar.drive_remove_signal.connect(self.drive_remove_pressed)
+
+        self.m_menuBar.googleAddAction.triggered.connect(self.google_drive_clicked)
+        self.m_menuBar.boxAddAction.triggered.connect(self.box_clicked)
+        self.m_menuBar.dropboxAddAction.triggered.connect(self.dropbox_clicked)
+        self.m_menuBar.homeBtn.clicked.connect(self.load_files_from_root)
 
         self.m_statusBar = StatusBar()
 
         self.m_listview = DirectoryView()
-        self.m_listview.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.m_listview.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
-        self.m_listview.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.m_listview.customContextMenuRequested.connect(self.m_listview.popup_menu)
-
         self.m_listview.doubleClicked.connect(self.list_view_double_clicked)
         self.m_listview.del_request_signal.connect(self.listview_del_pressed)
         self.m_listview.rename_request_signal.connect(self.listview_f2_pressed)
@@ -55,6 +54,7 @@ class MainFrame(QtWidgets.QFrame):
 
         self.model = PiecesModel()
         self.model.do_rename_signal.connect(self.do_rename)
+        self.model.drop_piece_signal.connect(self.move_to_folder)
 
         self.m_listview.setModel(self.model)
         self.m_directoryBar = DirectoryBar()
@@ -70,9 +70,14 @@ class MainFrame(QtWidgets.QFrame):
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
 
-        self.add_drive_menu_bar_action()
         self.load_data_from_store_list()
         self.load_files_from_root()
+
+    def move_to_folder(self, next_folder: str):
+        idx = self.m_listview.selectedIndexes()[0]
+        filename = self.model.files[idx.row()].name
+        print(self.current_dir + filename + "->" + self.current_dir + next_folder + "/" + filename)
+        self.do_rename(filename, next_folder + "/" + filename)
 
     def listview_upload_clicked(self):
         files = QtWidgets.QFileDialog.getOpenFileNames()
@@ -85,8 +90,12 @@ class MainFrame(QtWidgets.QFrame):
     def listview_del_pressed(self):
         while len(self.m_listview.selectedIndexes()):
             idx = self.m_listview.selectedIndexes()[0]
-            filename = self.model.files[idx.row()].name
-            unidrive.remove_file(self.current_dir+filename)
+            if self.model.files[idx.row()].is_dir is False:
+                filename = self.model.files[idx.row()].name
+                unidrive.remove_file(self.current_dir+filename)
+            else:
+                filename = self.model.files[idx.row()].name
+                unidrive.remove_directory(self.current_dir + filename)
             self.model.remove_piece(idx.row())
             for i, item in enumerate(self.file_in_current):
                 if item.name == filename:
@@ -101,6 +110,10 @@ class MainFrame(QtWidgets.QFrame):
 
     def do_rename(self, before, after):
         unidrive.rename(self.current_dir+before, self.current_dir+after)
+        for file in self.file_in_current:
+            if file.name == before:
+                file.name = after
+                break
 
     def set_download_directory_action(self):
         self.download_dir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
@@ -122,7 +135,7 @@ class MainFrame(QtWidgets.QFrame):
             if exit_flag == 0:
                 break
         unidrive.make_directory(self.current_dir, newFolderName)
-        self.add_folder_by_directory_entry(VirtualEntry(DirectoryEntry(newFolderName, True)))
+        self.add_folder_by_virtual_entry(VirtualEntry(DirectoryEntry(newFolderName, True)))
 
     def go_specific_directory_button(self, button):
         flag = 0
@@ -171,7 +184,6 @@ class MainFrame(QtWidgets.QFrame):
             self.m_listview.set_directory(next_list)
 
     def list_view_double_clicked(self, idx):
-        self.m_statusBar.set_status_wait("Downloading...")
         clicked_file = self.model.files[idx.row()]
         fileName = clicked_file.pure_name
         ext = clicked_file.ext
@@ -179,6 +191,7 @@ class MainFrame(QtWidgets.QFrame):
             self.current_dir = self.current_dir + clicked_file.name + "/"
             self.dir_selected(clicked_file.name, False)
         else:
+            self.m_statusBar.set_status_wait("Downloading...")
             self.set_download_directory_action()
             if os.path.exists(self.download_dir) is False:
                 self.m_statusBar.set_status_fail("Download directory is not exists")
@@ -198,13 +211,6 @@ class MainFrame(QtWidgets.QFrame):
     def load_files_from_root(self):
         self.current_dir = "/"
         self.dir_selected("/", False)
-
-    def add_drive_menu_bar_action(self):
-        # set trigger to action
-        self.m_menuBar.googleAddAction.triggered.connect(self.google_drive_clicked)
-        self.m_menuBar.boxAddAction.triggered.connect(self.box_clicked)
-        self.m_menuBar.dropboxAddAction.triggered.connect(self.dropbox_clicked)
-        self.m_menuBar.homeBtn.clicked.connect(self.load_files_from_root)
 
     def drive_addtion(self, type: str):
         try:
@@ -250,6 +256,8 @@ class MainFrame(QtWidgets.QFrame):
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls:
+            event.accept()
+        elif event.mimeData().hasFormat('image/x-puzzle-piece'):
             event.accept()
         else:
             event.ignore()
@@ -355,7 +363,7 @@ class MainFrame(QtWidgets.QFrame):
         except PermissionError:
             pass
 
-    def add_folder_by_directory_entry(self, folder):
+    def add_folder_by_virtual_entry(self, folder):
         try:
             image = QtGui.QPixmap('images/exts/folder.png')
             last_idx = len(self.model.files)

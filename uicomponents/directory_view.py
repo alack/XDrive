@@ -27,9 +27,12 @@ class DirectoryView(QtWidgets.QListView):
         self.pieceRects = []
         self.pieceLocations = []
         self.highlightedRect = QtCore.QRect()
-        self.setAcceptDrops(True)
         self.setMinimumSize(400, 400)
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers | QtWidgets.QAbstractItemView.EditKeyPressed)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.setDragDropOverwriteMode(False)
 
     def clear(self):
         self.pieceLocations = []
@@ -44,7 +47,7 @@ class DirectoryView(QtWidgets.QListView):
         self.clear()
         for file in files:
             if file.is_dir:
-                self.parent().add_folder_by_directory_entry(file)
+                self.parent().add_folder_by_virtual_entry(file)
             else:
                 self.parent().add_file_by_virtual_entry(file)
 

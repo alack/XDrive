@@ -51,10 +51,6 @@ class MenuBar(QtWidgets.QFrame):
         #self.homeBtn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         #self.homeBtn.setText("home!")
 
-        # set folder open btn
-        self.folderOpenBtn = QtWidgets.QToolButton()
-        self.folderOpenBtn.setIcon(QtGui.QIcon('images/menuIcons/folder_open.png'))
-
         # set add folder button
         self.addFolderBtn = QtWidgets.QToolButton()
         self.addFolderBtn.setIcon(QtGui.QIcon('images/menuIcons/add_folder_blue.png'))
@@ -78,7 +74,6 @@ class MenuBar(QtWidgets.QFrame):
         self.layout = QtWidgets.QHBoxLayout(self)
         self.layout.addWidget(self.progressBar)
         self.layout.addWidget(self.homeBtn)
-        self.layout.addWidget(self.folderOpenBtn)
         self.layout.addWidget(self.addFolderBtn)
         self.layout.addWidget(self.addCloudBtn)
         self.layout.addWidget(self.removeCloudBtn)

@@ -9,5 +9,5 @@ class StoreFactory:
     }
 
     @classmethod
-    def create_store(cls, type, config, name, tokenbox):
-        return cls.store_types[type](config, name, tokenbox)
+    def create_store(cls, store_type, config, name, tokenbox):
+        return cls.store_types[store_type](config, name, tokenbox)

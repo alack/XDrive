@@ -1,8 +1,8 @@
 import json
 from typing import List
 from pathlib import PurePath
-from . store import Store
-from . directory_entry import DirectoryEntry
+from .store import Store
+from .directory_entry import DirectoryEntry
 from exceptions import *
 from requests_oauthlib import OAuth2Session
 from tokenbox import Tokenbox
@@ -99,7 +99,7 @@ class DropboxStore(Store):
             body['path'] = ''
 
         response = self.session.post(self.__list_url, data=json.dumps(body),
-                                     headers={'Content-Type':'application/json'})
+                                     headers={'Content-Type': 'application/json'})
         if response.status_code == 401:
             self.delete_token()
             raise UnauthorizedRequestError('get list fail')
@@ -114,7 +114,7 @@ class DropboxStore(Store):
                     reason = response['error']['path']['.tag']
                     if 'not_found' == reason:
                         raise NoEntryError('get list fail')
-                    else :
+                    else:
                         raise BaseStoreException('get list fail : reason = {0}'.format(reason))
             response = response.json()
             for file in response['entries']:
@@ -125,17 +125,17 @@ class DropboxStore(Store):
             if response['has_more'] is False:
                 break
             response = self.session.post(self.__list_url + '/continue',
-                                         data=json.dumps({'cursor':response['cursor']}),
-                                         headers={'Content-Type':'application/json'})
+                                         data=json.dumps({'cursor': response['cursor']}),
+                                         headers={'Content-Type': 'application/json'})
         return results
 
     def make_dir(self, path: PurePath, name: str) -> bool:
         body = {
-            'path': (path/name).as_posix(),
+            'path': (path / name).as_posix(),
             'autorename': False
         }
         response = self.session.post(self.__mkdir_url, data=json.dumps(body),
-                                     headers={'Content-Type':'application/json'})
+                                     headers={'Content-Type': 'application/json'})
         if response.status_code == 401:
             self.delete_token()
             raise UnauthorizedRequestError('mkdir fail')
