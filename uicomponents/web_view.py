@@ -15,16 +15,22 @@ class WebView(QWebEngineView):
         super(WebView, self).__init__()
         self.type = parent[0]
         self.name = parent[1]
-        self.setUrl(QUrl(parent[2]))
-        self.urlChanged.connect(self.url_changed)
+        self.url = QUrl(parent[2])
+        if self.type == "Dropbox":
+            self.setUrl(QtCore.QUrl("https://www.dropbox.com/logout"))
+            self.loadFinished.connect(self.load_finished)
+        else:
+            self.setUrl(self.url)
+            self.urlChanged.connect(self.url_changed)
 
-    def change_url(self, url):
-        self.setUrl(url)
+    def load_finished(self, ok):
+        self.setUrl(self.url)
+        self.urlChanged.connect(self.url_changed)
+        self.loadFinished.disconnect()
 
     def url_changed(self, url):
-        current_url = QUrl.host(url)
+        current_url = url.toString()
         for localhostUrls in self.localhost:
             if current_url.startswith(localhostUrls):
-                # TODO finish google authorization
                 self.receive_url_signal.emit(self.type, self.name, url.toString())
                 self.close()

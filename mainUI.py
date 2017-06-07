@@ -243,7 +243,7 @@ class MainFrame(QtWidgets.QFrame):
             self.my_view.receive_url_signal.connect(self.drive_addition_after)
             self.my_view.show()
         except Exception:
-            self.m_statusBar.set_status_fail(init_drive_name + " is alread registered")
+            self.m_statusBar.set_status_fail("Register failed")
 
     def drive_addition_after(self, type: str, name, url):
         try:
@@ -256,7 +256,7 @@ class MainFrame(QtWidgets.QFrame):
             else:
                 self.m_statusBar.set_status_fail("Fail " + name)
         except Exception:
-            self.m_statusBar.set_status_fail(name + "is alread registered")
+            self.m_statusBar.set_status_fail("Register failed")
         self.set_progress_to_usage()
         self.refresh_directory()
 
