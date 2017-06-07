@@ -97,10 +97,13 @@ class MainFrame(QtWidgets.QFrame):
         unidrive.remove_store(selected)
         self.set_progress_to_usage()
         self.refresh_directory()
+        self.m_statusBar.set_status_ok(selected + " is deleted")
 
     def listview_del_pressed(self):
+        cnt = 0
         while len(self.m_listview.selectedIndexes()):
             idx = self.m_listview.selectedIndexes()[0]
+            cnt += 1
             if self.model.files[idx.row()].is_dir is False:
                 filename = self.model.files[idx.row()].name
                 unidrive.remove_file(self.current_dir+filename)
@@ -113,6 +116,7 @@ class MainFrame(QtWidgets.QFrame):
                     del(self.file_in_current[i])
                     break
         self.set_progress_to_usage()
+        self.m_statusBar.set_status_ok(cnt + " items are deleted")
 
     def listview_f2_pressed(self, row):
         idx = self.m_listview.model().index(row, 0, QtCore.QModelIndex())
@@ -125,6 +129,7 @@ class MainFrame(QtWidgets.QFrame):
             if file.name == before:
                 file.name = after
                 break
+        self.m_statusBar.set_status_ok(before + " is renamed to " + after)
 
     def set_download_directory_action(self):
         self.download_dir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
@@ -147,6 +152,7 @@ class MainFrame(QtWidgets.QFrame):
                 break
         unidrive.make_directory(self.current_dir, newFolderName)
         self.add_folder_by_virtual_entry(VirtualEntry(DirectoryEntry(newFolderName, True)))
+        self.m_statusBar.set_status_ok("new folder created")
 
     def go_specific_directory_button(self, button):
         flag = 0
@@ -181,11 +187,11 @@ class MainFrame(QtWidgets.QFrame):
             self.connected_drive_info.append(item)
             self.m_menuBar.remove_menu_add_item(item)
         self.set_progress_to_usage()
+        self.m_statusBar.set_status_ok("Drives are loaded.")
 
     def dir_selected(self, name, is_from_director_bar):
         next_list = VirtualEntry.list_to_virtual(unidrive.get_list(self.current_dir))
         self.file_in_current = next_list[:]
-
         if is_from_director_bar is False:
             if self.current_dir == '/':
                 self.m_directoryBar.set_root_button()
@@ -226,25 +232,31 @@ class MainFrame(QtWidgets.QFrame):
         self.dir_selected("/", False)
 
     def drive_addtion(self, type: str):
+        init_drive_name = type
         try:
-            init_drive_name = type
             name_num = 1
             while [type, init_drive_name] in self.connected_drive_info:
                 init_drive_name = type + str(name_num)
                 name_num += 1
             auth_url = unidrive.register_store(type+'Store', init_drive_name)
-            webbrowser.open_new(auth_url)
-            res = input('response url for ' + init_drive_name + ' : ')
-            if unidrive.activate_store(init_drive_name, res):
-                self.m_statusBar.set_status_ok("Success " + init_drive_name)
+            self.my_view = WebView((type, init_drive_name, QtCore.QUrl(auth_url)))
+            self.my_view.receive_url_signal.connect(self.drive_addition_after)
+            self.my_view.show()
+        except Exception:
+            self.m_statusBar.set_status_fail(init_drive_name + " is alread registered")
+
+    def drive_addition_after(self, type: str, name, url):
+        try:
+            if unidrive.activate_store(name, url):
+                self.m_statusBar.set_status_ok("Success " + name)
                 recent_store = unidrive.get_store_list()[-1]
                 item = [type, recent_store['name']]
                 self.connected_drive_info.append(item)
                 self.m_menuBar.remove_menu_add_item(item)
             else:
-                self.m_statusBar.set_status_fail("Fail " + init_drive_name)
+                self.m_statusBar.set_status_fail("Fail " + name)
         except Exception:
-            self.m_statusBar.set_status_fail(init_drive_name + "is alread registered")
+            self.m_statusBar.set_status_fail(name + "is alread registered")
         self.set_progress_to_usage()
         self.refresh_directory()
 
@@ -408,6 +420,7 @@ if __name__ == '__main__':
     mainUI = MainFrame()
     mainUI.move(60, 60)
     mainUI.show()
+
     splash.finish(mainUI)
 
     app.exec_()
