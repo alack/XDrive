@@ -17,6 +17,7 @@ class DirectoryBar(QtWidgets.QDialog):
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Highlight)
         self.setStyleSheet(css)
+        self.setAcceptDrops(False)
 
         self.directoryButtonGroup = QtWidgets.QButtonGroup()
         # set horizontal box

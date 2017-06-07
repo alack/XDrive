@@ -86,7 +86,6 @@ class MainFrame(QtWidgets.QFrame):
     def move_to_folder(self, next_folder: str):
         idx = self.m_listview.selectedIndexes()[0]
         filename = self.model.files[idx.row()].name
-        print(self.current_dir + filename + "->" + self.current_dir + next_folder + "/" + filename)
         self.do_rename(filename, next_folder + "/" + filename)
 
     def listview_upload_clicked(self):
@@ -96,6 +95,8 @@ class MainFrame(QtWidgets.QFrame):
 
     def drive_remove_pressed(self, selected):
         unidrive.remove_store(selected)
+        self.set_progress_to_usage()
+        self.refresh_directory()
 
     def listview_del_pressed(self):
         while len(self.m_listview.selectedIndexes()):
@@ -179,6 +180,7 @@ class MainFrame(QtWidgets.QFrame):
             item = [type, store['name']]
             self.connected_drive_info.append(item)
             self.m_menuBar.remove_menu_add_item(item)
+        self.set_progress_to_usage()
 
     def dir_selected(self, name, is_from_director_bar):
         next_list = VirtualEntry.list_to_virtual(unidrive.get_list(self.current_dir))
@@ -192,6 +194,7 @@ class MainFrame(QtWidgets.QFrame):
         self.model.clear()
         if len(next_list) != 0:
             self.m_listview.set_directory(next_list)
+        self.set_progress_to_usage()
 
     def list_view_double_clicked(self, idx):
         clicked_file = self.model.files[idx.row()]
@@ -242,6 +245,8 @@ class MainFrame(QtWidgets.QFrame):
                 self.m_statusBar.set_status_fail("Fail " + init_drive_name)
         except Exception:
             self.m_statusBar.set_status_fail(init_drive_name + "is alread registered")
+        self.set_progress_to_usage()
+        self.refresh_directory()
 
     def google_drive_clicked(self):
         self.drive_addtion("GoogleDrive")

@@ -34,6 +34,7 @@ class TitleBar(QtWidgets.QFrame):
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Highlight)
         self.setStyleSheet(css)
+        self.setAcceptDrops(False)
 
         # XDrive icon
         XD = QtWidgets.QToolButton(self)

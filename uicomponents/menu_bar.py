@@ -58,16 +58,22 @@ class MenuBar(QtWidgets.QFrame):
         self.refreshBtn = QtWidgets.QToolButton()
         self.refreshBtn.setIcon(QtGui.QIcon('images/menuIcons/refresh.png'))
 
-        # add cloud menu
-        self.add_menu_setting()
+        self.addMenu = QtWidgets.QMenu()
+        # set add action
+        self.googleAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/google_small.png'), 'GoogleDrive', self)
+        self.boxAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/box.png'), "Box", self)
+        self.dropboxAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/dropbox.png'), "Dropbox", self)
+
+        self.addMenu.addAction(self.googleAddAction)
+        self.addMenu.addAction(self.boxAddAction)
+        self.addMenu.addAction(self.dropboxAddAction)
 
         # add cloud menu button
         self.addCloudBtn = QtWidgets.QPushButton()
         self.addCloudBtn.setIcon(QtGui.QIcon('images/menuIcons/add_cloud.png'))
         self.addCloudBtn.setMenu(self.addMenu)
 
-        # remove cloud setting
-        self.remove_menu_default_setting()
+        self.removeMenu = QtWidgets.QMenu()
 
         # remove cloud menu button
         self.removeCloudBtn = QtWidgets.QPushButton()
@@ -87,20 +93,6 @@ class MenuBar(QtWidgets.QFrame):
         # set title bar size
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.maxNormal = False
-
-    def add_menu_setting(self):
-        self.addMenu = QtWidgets.QMenu()
-        # set add action
-        self.googleAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/google_small.png'), 'GoogleDrive', self)
-        self.boxAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/box.png'), "Box", self)
-        self.dropboxAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/dropbox.png'), "Dropbox", self)
-
-        self.addMenu.addAction(self.googleAddAction)
-        self.addMenu.addAction(self.boxAddAction)
-        self.addMenu.addAction(self.dropboxAddAction)
-
-    def remove_menu_default_setting(self):
-        self.removeMenu = QtWidgets.QMenu()
 
     def remove_menu_add_item(self, item):
         added_action = QtWidgets.QAction(str(item[0]+"/"+item[1]), self)
@@ -125,7 +117,7 @@ class MenuBar(QtWidgets.QFrame):
         if limit > 0:
             value = (used*100)/limit
         self.progressBar.setValue(value)
-        self.progressBar.setFormat("%.2lf GB / %.2lf GB  %.2lf %%" %(used/self.to_giga, limit/self.to_giga, value))
+        self.progressBar.setFormat("%.2lf GB / %.2lf GB  %.2lf %%" % (used/self.to_giga, limit/self.to_giga, value))
 
         if value > 80:
             self.progressBar.setStyleSheet("""

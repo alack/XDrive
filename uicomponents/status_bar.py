@@ -17,6 +17,7 @@ class StatusBar(QtWidgets.QDialog):
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Highlight)
         self.setStyleSheet(css)
+        self.setAcceptDrops(False)
 
         self.statusIconBtn = QtWidgets.QToolButton()
         self.statusIconBtn.setIcon(QtGui.QIcon('images/status_ok.png'))
