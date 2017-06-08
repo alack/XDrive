@@ -108,12 +108,11 @@ class PiecesModel(QtCore.QAbstractListModel):
         if not data.hasFormat('image/x-puzzle-piece'):
             return False
         if action == QtCore.Qt.IgnoreAction:
-            return True
+            return False
         if column > 0:
             return False
         if self.files[parent.row()].is_dir:
             self.drop_piece_signal.emit(self.files[parent.row()].name)
-
         return True
 
     def rowCount(self, parent=QtCore.QModelIndex()):

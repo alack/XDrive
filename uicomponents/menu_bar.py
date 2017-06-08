@@ -65,7 +65,8 @@ class MenuBar(QtWidgets.QFrame):
         self.dropboxAddAction = QtWidgets.QAction(QtGui.QIcon('images/driveIcons/dropbox.png'), "Dropbox", self)
 
         self.addMenu.addAction(self.googleAddAction)
-        self.addMenu.addAction(self.boxAddAction)
+        # TODO : add Action after box available
+        #self.addMenu.addAction(self.boxAddAction)
         self.addMenu.addAction(self.dropboxAddAction)
 
         # add cloud menu button

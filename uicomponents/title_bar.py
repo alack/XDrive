@@ -90,14 +90,14 @@ class TitleBar(QtWidgets.QFrame):
         self.parent().showMinimized()
 
     def show_max_restore(self):
-        if(self.maxNormal):
+        if self.maxNormal:
             self.parent().showNormal()
             self.maxNormal = False
             self.maximize.setIcon(QtGui.QIcon('images/maximize.png'))
         else:
             self.parent().showMaximized()
             self.maxNormal = True
-            self.maximize.setIcon(QtGui.QIcon('images/maximize.png'))
+            self.maximize.setIcon(QtGui.QIcon('images/normalize.png'))
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:

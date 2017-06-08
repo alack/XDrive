@@ -1,6 +1,5 @@
 import os
 import sys
-import webbrowser
 from PyQt5 import QtGui, QtCore, QtWidgets
 from UniDrive import UniDrive
 from uicomponents import *
@@ -87,6 +86,7 @@ class MainFrame(QtWidgets.QFrame):
         idx = self.m_listview.selectedIndexes()[0]
         filename = self.model.files[idx.row()].name
         self.do_rename(filename, next_folder + "/" + filename)
+        self.m_statusBar.set_status_ok(filename + " is moved to " + next_folder)
 
     def listview_upload_clicked(self):
         files = QtWidgets.QFileDialog.getOpenFileNames()
@@ -116,7 +116,7 @@ class MainFrame(QtWidgets.QFrame):
                     del(self.file_in_current[i])
                     break
         self.set_progress_to_usage()
-        self.m_statusBar.set_status_ok(cnt + " items are deleted")
+        self.m_statusBar.set_status_ok("Delete done.")
 
     def listview_f2_pressed(self, row):
         idx = self.m_listview.model().index(row, 0, QtCore.QModelIndex())
@@ -132,7 +132,7 @@ class MainFrame(QtWidgets.QFrame):
         self.m_statusBar.set_status_ok(before + " is renamed to " + after)
 
     def set_download_directory_action(self):
-        self.download_dir = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Directory")
+        self.download_dir = QtWidgets.QFileDialog.getExistingDirectory(None, "Select Directory")
 
     def add_folder_action(self):
         image = QtGui.QPixmap('images/exts/folder.png')
@@ -264,11 +264,10 @@ class MainFrame(QtWidgets.QFrame):
         self.drive_addtion("GoogleDrive")
 
     def box_clicked(self):
-        # TODO need to write code about box get auth_url
+        # TODO : need box
+        # self.drive_addition("Box")
         # TODO delete Item from
         item = ["box", "highalps", "z9123rnaz00cxv"]
-        self.m_statusBar.set_status_ok("box Added, ("+item[0]+", "+item[1]+", "+item[2]+")")
-        # TODO delete Item to
 
     def dropbox_clicked(self):
         self.drive_addtion("Dropbox")
@@ -292,40 +291,32 @@ class MainFrame(QtWidgets.QFrame):
     def dropEvent(self, event):
         if event.mimeData().hasUrls:
             upload_list = event.mimeData().urls()
-            count = len(upload_list)
-            if count >= 2:
-                status = str(count)+" files are uploading"
-                self.m_statusBar.set_status_wait(status)
-            elif count == 1:
-                status = str(upload_list[0].toLocalFile())
-                self.m_statusBar.set_status_wait(str(upload_list[0].toLocalFile())+" is uploading")
             for url in upload_list:
-                path = str(Path(url.toLocalFile()))
-                self.upload_progress(path)
+                self.upload_progress(url.toLocalFile())
         else:
             self.m_listview.highlightedRect = QtCore.QRect()
             event.ignore()
 
     def upload_progress(self, path):
-            cur_path = Path(path)
             self.m_statusBar.set_status_wait("Uploading....")
-            if cur_path.is_dir():
-                unidrive.make_directory(self.current_dir, cur_path.stem)
-                self.add_folder_by_url(cur_path)
+            path = Path(path)
+            if path.is_dir():
+                unidrive.make_directory(self.current_dir, path.stem)
+                self.add_folder_by_url(path)
             else:
                 self.add_file_by_url(path)
-                if cur_path.is_file() is False:
+                if path.is_file() is False:
                     self.m_statusBar.set_status_fail("file does not exists")
                     return
-                with open(cur_path, 'rb') as src_file:
+                with open(path, 'rb') as src_file:
                     src_data = src_file.read()
                 try:
-                    if unidrive.upload_file(self.current_dir + cur_path.name, src_data) is True:
+                    if unidrive.upload_file(self.current_dir + path.name, src_data) is True:
                         self.m_statusBar.set_status_ok(str(path) + " is uploaded")
                     else:
                         self.m_statusBar.set_status_ok(str(path) + " upload failed")
                 except BaseStoreException as e:
-                    self.m_statusBar.set_status_fail(str(cur_path) + " upload error")
+                    self.m_statusBar.set_status_fail(str(path) + " upload error")
                 else:
                     self.m_statusBar.set_status_ok("Upload Done.")
 

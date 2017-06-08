@@ -1,10 +1,6 @@
-import sys
-from PyQt5 import QtWidgets, QtGui, QtCore
-
+from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import QUrl
-from PyQt5.QtWebEngine import *
 from PyQt5.QtWebEngineWidgets import *
-from PyQt5.QtWebEngineCore import *
 
 
 class WebView(QWebEngineView):
@@ -13,6 +9,8 @@ class WebView(QWebEngineView):
 
     def __init__(self, parent):
         super(WebView, self).__init__()
+        self.setWindowIcon(QtGui.QIcon('images/XD.png'))
+        self.setWindowTitle("Login")
         self.type = parent[0]
         self.name = parent[1]
         self.url = QUrl(parent[2])
