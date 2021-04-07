@@ -1,6 +1,6 @@
 apiclient==1.0.3
 blinker==1.4
-bottle==0.12.13
+bottle==0.12.19
 boxsdk==2.0.0a4
 cx-Freeze==5.0.1
 cycler==0.10.0
