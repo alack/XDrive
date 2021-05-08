@@ -7,7 +7,7 @@ cycler==0.10.0
 Django==1.11
 dropbox==7.3.0
 enum-compat==0.0.2
-eventlet==0.21.0
+eventlet==0.31.0
 falcon==1.1.0
 future==0.16.0
 google-api-python-client==1.6.2
