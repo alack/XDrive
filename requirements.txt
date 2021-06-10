@@ -4,7 +4,7 @@ bottle==0.12.13
 boxsdk==2.0.0a4
 cx-Freeze==5.0.1
 cycler==0.10.0
-Django==1.11
+Django==2.2.24
 dropbox==7.3.0
 enum-compat==0.0.2
 eventlet==0.21.0
