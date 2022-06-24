@@ -35,7 +35,7 @@ pytz==2017.2
 requests==2.13.0
 requests-oauthlib==0.8.0
 requests-toolbelt==0.7.1
-rsa==4.1
+rsa==4.7
 sip==4.19.2
 six==1.10.0
 uritemplate==3.0.0
