@@ -40,4 +40,4 @@ sip==4.19.2
 six==1.10.0
 uritemplate==3.0.0
 urllib3==1.26.5
-Werkzeug==0.15.3
+Werkzeug==2.2.3
